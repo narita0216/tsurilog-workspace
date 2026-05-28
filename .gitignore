@@ -34,6 +34,12 @@ gstack/
 # Logs
 *.log
 
+# ハーネス effectiveness テレメトリ(ローカル蓄積。毎ターン変わるので追跡しない
+# = Stop フックの autosave が telemetry だけで毎回コミットするのを防ぐ。ADR-0005)
+# 複数マシンでテレメトリを共有したくなったら、この除外を外して追跡に戻す。
+/harness-engineering/assessment/effectiveness/events-*.jsonl
+/harness-engineering/assessment/effectiveness/*.jsonl.lock
+
 # Secrets (defensive — should never live here, but just in case)
 .env
 .env.*
