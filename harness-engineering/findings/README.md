@@ -25,3 +25,5 @@ YYYY-MM-DD-<topic>.md
 | 日付 | トピック |
 |---|---|
 | [2026-05-28](2026-05-28-openapi-route-drift.md) | openapi.yml と実ルート/native クライアントのドリフト(初回計測) |
+
+<!-- autosave test marker 084807 -->
