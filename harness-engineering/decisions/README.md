@@ -21,3 +21,4 @@ $EDITOR 000N-<short-slug>.md
 | [0002](0002-api-contract-source-of-truth.md) | API コントラクトの真実は routes/api.php、3 点を揃える | Accepted |
 | [0003](0003-local-dev-environment.md) | 動作検証はローカル(backend Docker / native dev client) | Accepted |
 | [0004](0004-quality-gates-and-hooks.md) | 品質ゲートと hooks(php-lint / contract-check / Pint / tsc) | Accepted |
+| [0005](0005-workspace-autosave.md) | workspace メタリポを Stop フックで自動 commit & push | Accepted |

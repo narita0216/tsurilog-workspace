@@ -25,6 +25,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/harness-engineering/tools/harness-autosave.sh"
+          }
+        ]
+      }
     ]
   },
   "permissions": {
@@ -34,12 +44,11 @@
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git push origin main:*)",
-      "Bash(git push origin master:*)",
+      "Bash(git push origin develop:*)",
       "Bash(git reset --hard:*)",
       "Bash(git clean -f:*)",
       "Bash(git branch -D:*)",
       "Bash(git checkout main)",
-      "Bash(git checkout master)",
       "Bash(php artisan migrate:fresh:*)",
       "Bash(php artisan migrate:reset:*)",
       "Bash(php artisan db:wipe:*)",

@@ -25,7 +25,11 @@ tsurilog-workspace/
 └── tsurilog-backend/         ← API(別リポジトリ / gitignore 対象)
 ```
 
-> **重要:** ワークスペース親ディレクトリは現時点で git 管理されていません。ハーネス資産(本ファイル群)をバージョン管理したい場合は `git init` を推奨します(README 参照)。サブリポはそれぞれ独立した git リポジトリです。
+> **重要:** ワークスペース親ディレクトリ自体が git リポジトリ(**メタリポジトリ**)で、ハーネス資産(本ファイル群)を版管理する。
+> - remote: `git@github-narita0216:narita0216/tsurilog-workspace.git`(owner: narita0216)
+> - ブランチ: **`master`**(workspace の唯一の作業ブランチ。`develop` は使わない)
+> - サブリポ(`tsurilog-native` / `tsurilog-backend`)は `.gitignore` で除外され、それぞれ独立した git リポジトリ。
+> このメタリポは本番デプロイを持たない(ハーネス/ドキュメント/ADR 用)ため、コードリポとは運用ルールが異なる(§6.1)。
 
 ---
 
@@ -35,8 +39,9 @@ tsurilog-workspace/
 |---|---|---|
 | `tsurilog-native` | **アプリ本体**(React Native / Expo)。ユーザーが触る全画面・GPS・マップ・釣行記録・分析表示・通知 | `git@github-narita0216:narita0216/tsurilog-native.git` |
 | `tsurilog-backend` | **API サーバー**(Laravel)。認証・釣行/釣果データ・マスタ・分析集計・プッシュ通知配信・潮汐取得バッチ | `https://github.com/reomin/tsurilog-backend.git` |
+| `tsurilog-workspace` | **メタリポ(本ディレクトリ)。** 横断ハーネス・ドキュメント・ADR・findings。コードは含まない | `git@github-narita0216:narita0216/tsurilog-workspace.git`(branch: `master`) |
 
-**両リポは DB を共有しない。** airtrunk のような「同一 DB を複数アプリが直接読み書き」する構成ではなく、**アプリ → REST API → DB という一方向**。したがって横断作業の核心は「共有テーブル」ではなく **API コントラクト(エンドポイント定義)の整合性**(Section 4)。
+**両コードリポは DB を共有しない。** airtrunk のような「同一 DB を複数アプリが直接読み書き」する構成ではなく、**アプリ → REST API → DB という一方向**。したがって横断作業の核心は「共有テーブル」ではなく **API コントラクト(エンドポイント定義)の整合性**(Section 4)。
 
 ### ドメイン用語
 
@@ -170,7 +175,18 @@ AI で両リポを横断的に扱うとき、価値が出る分析角度:
 - **新規ブランチは必ず `develop` を起点**に切る。`main` を起点にしない。
 - **`main` への直接 push / merge は行わない。**
 - PR は人間レビューを受ける。AI が単独 merge しない。
-- ワークスペース親ディレクトリ自体は git 管理外(または `git init` 後の独立リポ)。サブリポの作業はそれぞれのリポ内で行う。
+
+#### workspace メタリポ(`tsurilog-workspace` = 本ディレクトリ)
+
+| ブランチ | 役割 |
+|---|---|
+| `master` | **唯一の作業ブランチ。AI が直接 commit / push 可。** `develop` は使わない |
+
+- メタリポは本番デプロイを持たない(ハーネス/ドキュメント用)ため、コードリポと運用が異なる。
+- **AI はハーネス整備(`CLAUDE.md` / ADR / `findings/` / `tools/` / `.claude/`)を `master` に直接 commit / push してよい。** feature ブランチ・PR・人間レビュー不要。
+- **Stop フックで自動 commit & push される**(`harness-autosave.sh`、ADR-0005)。変更があれば毎ターン終了時に自動反映。手動で `git commit` / `git push` してもよい。
+- ただし不可逆操作(`git push --force`、`git reset --hard`、履歴書き換え)は引き続き禁止。
+- サブリポ(native/backend)の作業はそれぞれのリポ内で行い、上記コードリポのルールに従う。
 
 ### 6.2 横断調査を行うとき
 1. `tsurilog-workspace/` で Claude Code を起動 → 本 `CLAUDE.md` が読まれる
@@ -229,10 +245,11 @@ README の設計思想を厳守する:
 - **`eas submit`(ストア提出)は AI が自走で行わない**(deny 済み)。`eas build` は明示指示があるときのみ。
 - マイグレーションは追記式(`database/migrations/`)。既存マイグレーションを書き換えず新規ファイルを足す。
 
-### 8.5 ハーネスの自律改善
-- 会話・実装で得た知見は CLAUDE.md / ADR / `harness-engineering/findings/` に反映してよい。
-- 同じ間違いを繰り返さないための memory 書き込み・ツール改善・skill 追加は自走で行う。
-- 新規 skill を作ったら `.claude/SKILL_INDEX.md` に 1 行追記し、末尾に `effectiveness-log.sh emit` を入れる(`.claude/skill-template.md`)。
+### 8.5 ハーネスの自律改善(workspace は AI 管理)
+- 会話・実装で得た知見は **`CLAUDE.md` / ADR / `harness-engineering/findings/` に書き出す**。これらは workspace リポ内なので版管理 + push される。
+- ツール改善・skill 追加も自走で行う。新規 skill は `.claude/SKILL_INDEX.md` に 1 行追記し、末尾に `effectiveness-log.sh emit` を入れる(`.claude/skill-template.md`)。
+- **メモリ(`~/.claude*/.../memory/`)は workspace の外にあり git に含まれない(= push されない)。** ユーザー指摘や再発防止の学びを「リポに残す/共有する」必要があるものは、メモリだけでなく **`findings/` か `CLAUDE.md` にも書く**こと。メモリは個人ローカルの即時想起用、リポは共有の正本、と使い分ける。
+- workspace の `master` への commit / push は **Stop フックで自動**(ADR-0005、`harness-autosave.sh`)。ターン内で手動 commit してもよい(意味あるメッセージにしたい時)。
 
 ### 8.6 GitHub 接続
 - GitHub MCP(`.mcp.json`)を第一選択。MCP で出来ない/不便なときに限り `git` / `gh` をフォールバック許可(理由を commit / PR に残す)。

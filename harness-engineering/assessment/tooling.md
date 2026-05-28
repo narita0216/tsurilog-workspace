@@ -12,7 +12,7 @@
 | `.claude/settings.json` | ✅ SessionStart / PostToolUse hooks + permissions deny/allow |
 | スラッシュコマンド | ✅ 5(`contract-check` / `endpoint-trace` / `backend-check` / `native-check` / `ticket`) |
 | サブエージェント | ✅ 3(`laravel-api-reviewer` / `expo-rn-reviewer` / `api-contract-checker`) |
-| ツール | ✅ 6(`contract-check` / `php-lint` / `backend-check` / `native-check` / `workspace-sync` / `effectiveness-log`) |
+| ツール | ✅ 7(`contract-check` / `php-lint` / `backend-check` / `native-check` / `workspace-sync` / `effectiveness-log` / `harness-autosave`) |
 | テレメトリ | ✅ `assessment/effectiveness/events-<host>.jsonl`(自動蓄積) |
 
 ---
@@ -48,8 +48,11 @@
 | SessionStart | `workspace-sync.sh check` | 両リポの git 状態(ブランチ/未コミット)を通知 |
 | SessionStart | `contract-check.sh --quiet` | コントラクトドリフトがあれば 1 行通知 |
 | PostToolUse(Edit/Write/MultiEdit) | `php-lint.sh --hook` | backend `.php` を PHP 8.4 で構文チェック(エラーで blocking) |
+| Stop(ターン終了) | `harness-autosave.sh` | workspace の変更を自動 commit & push(ADR-0005) |
 
 native(TS)の型チェックは重いため hook にせず、`/native-check` でオンデマンド(ADR-0004)。
+
+> ⚠️ Stop フック・MCP・deny の変更は **Claude Code 再起動後**に有効化される(settings.json はセッション開始時に読まれる)。
 
 ---
 
