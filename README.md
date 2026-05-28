@@ -61,17 +61,17 @@ cd ..
 
 > backend の `.env` は `DB_CONNECTION=pgsql` / `DB_HOST=db`(compose 内)/ `DB_DATABASE=tsurilog` / `DB_USERNAME=tsurilog_user` に合わせる。詳細は `tsurilog-backend/README.md`。
 
-### ハーネス資産を git 管理したい場合(任意・推奨)
+### ハーネスのメタリポジトリ
 
-このワークスペース親は初期状態では git 管理されていません。ハーネス(`.claude/` / `harness-engineering/` / 横断 md)を履歴管理したい場合:
+このワークスペース親は **git 管理下のメタリポジトリ**です(ハーネス資産を版管理)。
 
-```bash
-cd ~/projects/turilog/tsurilog-workspace
-git init
-git add .gitignore CLAUDE.md ARCHITECTURE.md README.md .mcp.json .claude harness-engineering
-git commit -m "chore: bootstrap tsurilog workspace harness"
-# サブリポ(tsurilog-native / tsurilog-backend)は .gitignore 済み
-```
+- remote: `git@github-narita0216:narita0216/tsurilog-workspace.git`
+- ブランチ: `master`(workspace の唯一の作業ブランチ)
+- サブリポ(`tsurilog-native` / `tsurilog-backend`)・秘密情報は `.gitignore` で除外
+
+**`master` は AI(Claude)が直接 commit / push してよい** AI 管理ブランチです。Stop フック(`harness-autosave.sh`)が、ハーネス/ドキュメントの変更をターン終了時に自動 commit & push します(ADR-0005)。無効化したい時は `HARNESS_AUTOSAVE_DISABLE=1`。
+
+> **注:** Claude のメモリ(`~/.claude*/.../memory/`)はこのリポの外にあり push されません。共有したい学びは `harness-engineering/findings/` か `CLAUDE.md` に書き出します(CLAUDE.md §8.5)。
 
 ---
 
