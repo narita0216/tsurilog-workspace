@@ -1,0 +1,20 @@
+{
+  "$schema_note": "Workspace 共有 MCP 設定。Claude Code が tsurilog-workspace/ で起動された時に読まれる。秘密は ${ENV_VAR} 形式で外部参照し、各メンバーは ~/.zshrc などに export する。詳しくは .claude/README.md → SETUP を参照。",
+  "mcpServers": {
+    "github": {
+      "$comment": "GitHub 公式 MCP(Docker)。native(narita0216/tsurilog-native)と backend(reomin/tsurilog-backend)両方にアクセスできる PAT を用意する。Issue / PR / ファイル操作に使用。",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    }
+  }
+}

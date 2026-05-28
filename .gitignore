@@ -1,0 +1,43 @@
+# Subrepositories — managed independently (それぞれ独立した git リポジトリ)
+/tsurilog-native/
+/tsurilog-backend/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# direnv (個人のローカル設定)
+.envrc
+
+# Local-only AI workspace state (gstack memory, scratch)
+gstack/
+.gstack/
+*.local.md
+*.scratch.md
+
+# .claude/ — チーム共有部分(settings.json, commands/, agents/)はコミットする。
+# 個人設定・シークレットを含むファイルのみ除外する。
+/.claude/settings.local.json
+/.claude/.env
+/.claude/cache/
+/.claude/tmp/
+
+# Logs
+*.log
+
+# Secrets (defensive — should never live here, but just in case)
+.env
+.env.*
+*.pem
+*.key
+*.p8
+secrets/
