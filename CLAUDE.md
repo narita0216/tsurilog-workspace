@@ -176,6 +176,20 @@ AI で両リポを横断的に扱うとき、価値が出る分析角度:
 - **`main` への直接 push / merge は行わない。**
 - PR は人間レビューを受ける。AI が単独 merge しない。
 
+**実装着手の手順(両コードリポ共通・必須):** コードリポ(native / backend)で機能実装を始めるときは、毎回この手順を踏む。
+
+```bash
+# 1. develop へ切替し、リモート最新を取り込む(必ず最新の develop 起点)
+git checkout develop && git pull origin develop
+# 2. develop を起点に作業ブランチを新規作成
+git checkout -b feature/<topic>
+# 3. 実装・コミット
+# 4. push して develop への PR を作成(MCP 優先・§8.6)。base は必ず develop
+```
+
+- **両リポにまたがる機能は、native / backend それぞれで上記を行い、それぞれ `develop` への PR を立てる。** 対になる PR は本文で相互リンクする。
+- 着手時に `main` に居たら(SessionStart の workspace-sync が警告する)、まず上記手順で `develop` 起点の作業ブランチへ移る。`main` 上で直接実装しない。
+
 #### workspace メタリポ(`tsurilog-workspace` = 本ディレクトリ)
 
 | ブランチ | 役割 |
@@ -233,7 +247,7 @@ README の設計思想を厳守する:
 
 ### 8.3 native(Expo / RN)コード規約
 - 既存パターンに従う: `api/<domain>/<action>.ts` に 1 リクエスト 1 ファイル + `*ApiRequestParamsType` / `*ApiResponseType` の型定義。サーバ状態は **TanStack Query**(`hooks/use-*.ts`)、フォームは react-hook-form + zod(`validation/`)。
-- スタイルは **NativeWind(className)**。新規の生 StyleSheet を増やさない。
+- スタイルは **`StyleSheet.create` + `constants/config` のダークテーマ**(`MAIN_COLOR` / `APPLICATION_BACKGROUND_COLOR` / `APPLICATION_TEXT_COLOR` 等)で書く。**実コードは 100% StyleSheet**(`className` 使用 0 件)で、新規もこれに合わせて一貫させる。NativeWind は導入済みだが未使用(経緯: `findings/2026-05-29-native-styling-nativewind-vs-stylesheet.md`)。
 - 画面は **expo-router の file-based**(`app/`)。typed routes 前提。
 - ハードコードした魚種/釣法 ID やマジックナンバーを避け、master API / 定数を参照。
 - 変更後は `/native-check`(`expo lint` + `tsc --noEmit`)。整形は `npm run format`(Prettier)。
