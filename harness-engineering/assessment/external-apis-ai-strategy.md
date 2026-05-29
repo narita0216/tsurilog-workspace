@@ -1,0 +1,105 @@
+# Assessment — AI戦略機能の外部API選定(2026-05-29)
+
+AI戦略機能(`initiatives/ai-strategy-feature.md`)で使う外部 API を「日本沿岸カバレッジ・料金・商用可否・実装容易さ」で調査したスナップショット。料金は 2026-05 時点。最新は各公式を要確認。
+
+---
+
+## 結論(推奨スタック)
+
+| 役割 | 推奨 | 理由 |
+|---|---|---|
+| 水深・海底地形・潮汐・潮流・水温(日本沿岸) | **海しる(MSIL)公開API** | 公式・日本沿岸最適・無料・必要項目をほぼ網羅 |
+| 波高・うねり + 気象予報 | **要決定**(WWO / Open-Meteo 商用 / Stormglass)| MSIL に波高が無いため別途必要。商用ライセンス要確認 |
+| 動画解析(現地戦略) | **Gemini 2.5 Flash** | 動画マルチモーダル・安価($0.30/$2.50 per 1M)|
+| 戦略立案(メイン) | **Claude Sonnet 4.6** | 推論品質。$3/$15 per 1M |
+| 簡易判断 | **Claude Haiku 4.5** | $1/$5 per 1M。軽処理を振り分け |
+| コスト最適化 | **Prompt Caching** | キャッシュ読取 0.1x = 反復入力 90%削減 |
+
+---
+
+## 1. 水深・地形・海象(日本沿岸)
+
+### 海しる(MSIL)公開API — **本命** `portal.msil.go.jp`
+海上保安庁の海洋状況表示システム。約100以上の API。利用登録でサブスクキー発行、試用キーも公開、OAS 定義あり。
+
+取得できる項目(本機能に効くもの):
+- **等深線**(水深グリッドから生成)
+- **海底地形名**(日本周辺・日英)
+- **潮汐推算**(日本沿岸の潮位)← 既存の潮/潮位 API と重複。統一を検討
+- **潮流推算**(日本沿岸の潮流)
+- **水温**(連続観測点・外部リンク形式)
+- ❌ **波高は API 無し**
+
+**ライセンス/制約(`portal.msil.go.jp/agreement`):**
+- 料金記載なし(= 実質無料と思われる)。
+- **商用利用の明示なし**だが「アプリケーションの作成・運営・サービス提供」を想定した規約 → 要問い合わせ/登録時確認。
+- **クレジット表記が必須**(「海しるAPIを利用して取得した情報をもとに作成。内容は海保が保証するものではない」旨をアプリ内に明示)。
+- 負荷に応じた**アクセス制限あり**(具体値非公開)→ 既存の env_cache / mesh 同様キャッシュ前提で叩く(CLAUDE.md §7 リスク#4)。
+
+### NOAA NCEI bathymetry — **フォールバック/海外用** `ncei.noaa.gov`
+- グローバルな水深データ。REST は Crowbar API / CSB Data Extract API(soundings のメタdata・抽出が主)で、「緯度経度→水深」の素直な点問い合わせ用途には噛み合いにくい。
+- 無料・制限なしだが、**日本沿岸の解像度・使い勝手は MSIL に劣る**見込み。海外対応や MSIL 障害時の保険として位置づけ。
+
+### 波高の供給源(MSIL に無いため別途必須)
+有料アプリ(プレミアム¥500/月)なので**商用ライセンス**が論点:
+- **WWO(World Weather Online)Marine**: 要件定義書の当初案。波高・うねり・潮汐・海面/水温・気象を網羅。有料(無料枠あり)。1ソースで広く賄える。
+- **Open-Meteo Marine**: 波高/うねり/周期/向きを無料・キー不要で提供。ただし**無料は非商用**。商用は別途有料プラン要確認(比較的安価)。
+- **Stormglass**: 波高・水温・潮汐を統合提供。本番は有料。
+- (将来)**Yahoo天気API**: 要件の移行候補。日本特化だが海象 API 提供範囲は要確認。
+
+> 方針案: **MSIL(潮汐・水深・水温)+ 波高/気象予報を 1 つの海象API**で補完。波高ソースは商用ライセンスとコストで決定(下記 Open Question)。
+
+---
+
+## 2. 生成AI(Claude / Gemini)
+
+### Gemini 2.5 Flash(動画解析)
+- $0.30 / 1M 入力、$2.50 / 1M 出力。マルチモーダル(text/image/audio/video)。音声は 3.33x。
+- 現地動画(最大30秒想定)の解析に。Laravel からは HTTP(REST)で呼ぶ(File API で動画アップロード→解析)。
+
+### Claude(戦略立案)— ADR-0006 で Laravel 内 HTTP 呼び出しに決定
+- **Sonnet 4.6**: $3 / $15(in/out)。メインの戦略生成。
+- **Haiku 4.5**: $1 / $5。簡易判断・短い回答を振り分け(要件のコスト最適化)。
+- **Prompt Caching**: cache write 1.25x / cache read 0.1x。釣り専門知識のシステムプロンプトをキャッシュ → 反復入力を最大 90%削減(要件どおり実現可能)。
+- Batch API は 50%引きだが**非同期(最大24h)**なので、リアルタイム戦略には不適。事前戦略の先行生成など使えるケースがあれば検討。
+- Sonnet 4.6 / Opus は 1M コンテキスト対応(本機能は直近5往復のみ送信方針なので不要)。
+
+---
+
+## Open Questions(要決定)
+
+1. **波高/気象予報の API**: WWO / Open-Meteo 商用 / Stormglass のどれか。商用ライセンス可否とコストで決定。MVP は WWO(網羅性)or Open-Meteo 商用(安価)が有力。
+2. **潮汐の供給源**: 既存の潮/潮位 API を維持 vs MSIL 潮汐推算に統一。重複するので方針を決める。
+3. **海しる商用利用の可否**: 登録時/問い合わせで確認。クレジット表記をアプリ内のどこに出すか。
+4. **Gemini の動画アップロード経路**: native→backend→Gemini(secrets 集約・推奨)。動画サイズ/長さ上限と保持/削除ポリシー(initiative OQ5)。
+
+---
+
+## PoC(波高/海象APIの実測比較)
+
+決定方針: **PoC で実測してから波高/気象 API を確定**(2026-05-29)。比較ツール:
+`harness-engineering/tools/marine-api-poc.mjs`(Open-Meteo / WWO / Stormglass を同地点で横並び)。
+
+```bash
+# キー無しでも Open-Meteo は動く(評価用)
+node harness-engineering/tools/marine-api-poc.mjs 33.47 135.78   # 串本沖
+# WWO / Stormglass はキーを env で渡すと比較対象に加わる
+WWO_API_KEY=xxx STORMGLASS_API_KEY=yyy node harness-engineering/tools/marine-api-poc.mjs 33.47 135.78
+```
+
+実測済み(2026-05-29・串本沖 33.47,135.78):
+- **Open-Meteo**: 波高1.3m / うねり0.98m / 周期7.65s / 向き141° / 水温25.1℃。日本沿岸で欠損なく取得可。潮汐は無し(海しるで補完)。
+
+要取得キー(ユーザー作業):
+- **海しる(MSIL)**: `portal.msil.go.jp` で利用登録 → サブスクキー(本命・水深/潮汐/水温)
+- **WWO**: `worldweatheronline.com` 無料登録 → キー
+- **Stormglass**: `stormglass.io` 無料登録 → キー
+
+## Sources
+- 海しる公開API: https://portal.msil.go.jp/ , https://portal.msil.go.jp/msil-api-list , https://portal.msil.go.jp/agreement
+- NOAA NCEI bathymetry: https://www.ncei.noaa.gov/products/bathymetry
+- WWO Marine: https://www.worldweatheronline.com/weather-api/api/marine-weather-api.aspx
+- Open-Meteo Marine / Licence: https://open-meteo.com/en/docs/marine-weather-api , https://open-meteo.com/en/licence
+- Stormglass: https://stormglass.io/marine-weather/
+- Gemini pricing: https://ai.google.dev/gemini-api/docs/pricing
+- Claude pricing: https://platform.claude.com/docs/en/about-claude/pricing
