@@ -82,9 +82,10 @@
 4. **外部 API の確度**: 海上保安庁の水深/地形 API は提供形態・利用規約・日本沿岸カバレッジ要調査。
    WWO の水温/波高の精度と料金、Yahoo 天気移行の条件。
 5. **動画の扱い**: 現地動画のサイズ・長さ上限、アップロード経路(backend 経由 or 直接 Gemini)、保持/削除ポリシー。
-   - ⚠️ **カメラが現状無効**: app.json の expo-image-picker が `cameraPermission: false`。現地戦略の「撮影」を
-     実現するには `cameraPermission` を有効化(usage description 文字列)+ **dev client 再ビルド**が必要。
-     モックは暫定でライブラリ選択(`launchImageLibraryAsync`)に逃がしている。
+   - ✅ **カメラ有効化済み(2026-05-29)**: app.json の expo-image-picker に `cameraPermission` /
+     `microphonePermission` を設定し、現地戦略はカメラ起動の動画撮影(`launchCameraAsync` +
+     `requestCameraPermissionsAsync`)に対応。**反映には dev client の再ビルドが必要**
+     (`eas build --profile development` or `expo run:ios`)。
 6. **レスポンス形**: 既存 `is_success` / `error_message` 慣習に合わせる(CLAUDE.md §4)。戦略本文は構造化 JSON か Markdown か。
 7. **課金基盤**: 既存に決済はない(CLAUDE.md §2「決済は存在しない」)。プレミアム¥500/月をどう実現するか
    (App内課金 RevenueCat / StoreKit + Google Play Billing 等)は大きな別決定。MVP では利用回数制限のみ先行も可。
