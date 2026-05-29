@@ -34,3 +34,5 @@
 - `.env.example` の `DB_DATABASE=laravel` / `DB_USERNAME=root` は compose の `tsurilog` / `tsurilog_user` と食い違う。ローカルでは compose 側に合わせる。
 - `docker compose down -v` は DB ボリュームを消すため禁止(deny 済み)。データを保ったまま再起動は `down`(`-v` なし)。
 - native の `EXPO_PUBLIC_API_DOMAIN` は実機から見える backend のアドレス(同一 Wi-Fi なら開発機の LAN IP:8080)。`localhost` は実機からは届かない点に注意。
+- **クローン直後に `.env` が無いと、起動時に `Client Id property iosClientId must be defined to use Google auth` で全画面クラッシュする**(`use-auth.ts` が `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` を読み、未定義だと `Google.useAuthRequest` が throw → 全画面ラッパ `LoggedInLayout` で落ちる)。原因が分かりにくい。先に native README §3 の通り `.env`(`EXPO_PUBLIC_API_DOMAIN` / `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` / `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`)を作る。`EXPO_PUBLIC_*` は Metro がバンドル時に埋め込むため、`.env` 作成後は dev server 再起動(`npx expo start -c`)で反映 = ネイティブ再ビルド不要。
+- **カメラは無効化されている**(app.json の expo-image-picker `cameraPermission: false`)。`launchCameraAsync` は "Missing camera permission" で落ちる。写真/動画はライブラリ選択(`launchImageLibraryAsync`)のみ可。カメラを使う機能は `cameraPermission` 有効化 + dev client 再ビルドが要る。
