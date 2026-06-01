@@ -58,6 +58,10 @@
 - [ ] 課金(プレミアム)導線
 - [ ] (機能完成後)特許検討:Gemini動画解析→Claude戦略立案のフロー + 釣りログDB×環境×AI の構成
 
+## タスク分解(実装)
+
+→ **`ai-strategy-tasks.md`**(Phase1 既存移行 / Phase2 AI backend / Phase3 native。GitHub Issue 下書き兼ボード)
+
 ## 進め方(計画・暫定)
 
 > 詳細な順序とフェーズ分けは「要すり合わせ論点」確定後に更新する。
