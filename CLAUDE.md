@@ -52,7 +52,7 @@ tsurilog-workspace/
 | `pin`(ピン) | ユーザーが保存した地点(緯度経度)。半径圏内の記録/分析の起点 |
 | `is_fishing`(釣行中) | ユーザーが現在釣行中かのフラグ。釣行開始でオン、終了/自動終了でオフ |
 | `master`(マスタ) | 魚種(fish)・釣法(fishing_style)・天気・風速・波高・潮汐種別などの定義データ |
-| `env data`(環境データ) | 釣行地点・時刻の気象/海象(潮・潮位・気温・水温・風・波)。**現状すべて WWO(World Weather Online)1 本**から取得(backend `app/Services/GetEnvData.php` → `EnvCache`、mesh 5km×date×hour)。値は**マスタID にバケット化**して保存(生値でない)。**地形/水深は未取得**。詳細 → `findings/2026-05-29-env-data-wwo-only-no-terrain.md` |
+| `env data`(環境データ) | 釣行地点・時刻の気象/海象(潮・潮位・気温・水温・風・波)。**天気/波/水温/風/潮位 = WWO**(backend `app/Services/GetEnvData.php` → `EnvCache`、mesh 5km×date×hour)、**潮回り(tid_type)= tide736.net**(`FetchTidTypeService`)。値は**マスタID にバケット化**して保存(生値でない)。forecast を再取得せず長期キャッシュ=精度劣化要因。**地形/水深は未取得**。詳細 → `findings/2026-05-29-env-data-wwo-only-no-terrain.md` |
 | `analysis`(分析) | ピン半径圏内の釣れやすさ・魚種/釣法傾向・混雑状況の集計 |
 | `mesh`(メッシュ) | 環境データのキャッシュ単位(500m / 1km / 5km の地理メッシュ) |
 

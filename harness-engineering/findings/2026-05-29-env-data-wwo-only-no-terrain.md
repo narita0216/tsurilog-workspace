@@ -6,14 +6,25 @@
 
 ## 事実(コード確認済み)
 
-釣りログの環境データ取得は **`app/Services/GetEnvData.php` が World Weather Online(WWO)一本**:
-- `marine.ashx`(現在/予報)+ `past-marine.ashx`(過去)を `tide=yes` / `lang=ja` / `tp=1` で叩く。
-- 取得項目を時間ごとに抽出 → `EnvCache`(`mesh_5km_id` × `date` × `hour`)にキャッシュ:
-  - 潮汐(`tides` → tidType/tidAction)、天気(`weatherCode`)、気温(`tempC`)、
+釣りログの環境データ取得は **ほぼ WWO 一本**だが、潮の一部は別ソース:
+- `app/Services/GetEnvData.php` が **WWO**(`marine.ashx` 現在/予報 + `past-marine.ashx` 過去、`tide=yes`/`lang=ja`/`tp=1`)から
+  時間ごとに抽出 → `EnvCache`(`mesh_5km_id` × `date` × `hour`):
+  - **潮位の動き**(`tides` → tidAction)、天気(`weatherCode`)、気温(`tempC`)、
     **水温(`waterTemp_C`)**、風速(`windspeedKmph`)、**波高(`sigHeight_m`)**
-- 保存は**マスタIDにバケット化**(`weatherMaster` / `windSpeedMaster` / `waveHeightMaster` / `tidTypeMaster` / `tidActionMaster`)。
-  = 生の数値でなく区分値で持つ。
+- **潮回り(大潮/中潮/小潮 = tid_type)だけは `tide736.net`**(`app/Services/FetchTidTypeService.php`、`app:fetch-tid-type` バッチ)。WWO ではない。
+- 保存は**マスタIDにバケット化**(`weatherMaster`/`windSpeedMaster`/`waveHeightMaster`/`tidTypeMaster`/`tidActionMaster`)= 生値でなく区分値。
 - **地形・水深は両リポに参照ゼロ**(`depth`/`bathymetry`/`海底`/`等深`/`noaa`/`msil` いずれもヒットなし)。
+
+### 重要: tide736.net は潮を完全に賄える(WWO 不要)
+`tide736.net/api/get_tide.php`(pc/hc=港コード)は無料・日本特化で、実測(2026-06-01)で以下を返す:
+- 潮回り(`moon.title`)、満潮/干潮の時刻+潮位(`flood`/`edd`)、**20分刻みの潮位カーブ(`tide[].cm`)**。
+- **潮汐は天文ベースで決定論的** → 予報のように古くならず、長期キャッシュしても劣化しない。
+→ 潮位の動き(現状 WWO)も tide736.net で代替可能。**潮は WWO 不要**。
+
+### 重要: forecast の長期キャッシュが品質を落とす
+`EnvCache` は一度キャッシュすると再取得しない実装。天気/波は**予報**なので、1週間前に取った予報が
+そのまま残ると当日精度より悪い(前日予報 > 1週間前予報)。**forecast 系は target 日に近づいたら再取得**
+(TTL/失効)する設計が要る。**潮は決定論的なので対象外**。
 
 ## なぜ重要か(AI戦略機能への影響)
 

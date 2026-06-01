@@ -96,7 +96,8 @@
 - **2026-05-29:** native モック完成(`feature/ai-strategy-mock`、事前/現地+結果表示)。dev client 再ビルドで実機確認OK(カメラ撮影含む)。
 - **2026-05-29:** 外部API選定の調査完了 → `assessment/external-apis-ai-strategy.md`。日本沿岸の水深/地形/潮汐/水温は**海しる(MSIL)**が本命(無料・要登録・クレジット表記・波高は無し)。動画=**Gemini 2.5 Flash**、戦略=**Claude Sonnet/Haiku** + Prompt Caching。残る決定は**波高/気象予報の API**(商用ライセンス論点)と潮汐ソースの統一。
 - **2026-05-29:** 波高/海象APIは「PoCで実測してから決める」方針に。比較ツール `tools/marine-api-poc.mjs` を作成。
-- **2026-05-29:** キー受領し PoC 完走(WWO/Open-Meteo/Stormglass を串本沖・相模湾で実測)。結論=精度での一本化は不可・差は統合コスト/ライセンスで判断。**MVP 推奨: 波/気象は既存 WWO 流用 + 地形は海しる新規**(`assessment/external-apis-ai-strategy.md`)。既存環境データの実態(WWO 一本・バケット保存・地形なし・WWOキー平文)を確認し CLAUDE.md §2/§7 + finding に組み込み(`findings/2026-05-29-env-data-wwo-only-no-terrain.md`)。波の品質改善は後続で再評価。
+- **2026-05-29:** キー受領し PoC 完走(WWO/Open-Meteo/Stormglass を串本沖・相模湾で実測)。WWO は品質懸念(波高<うねり・水温ズレ)。精度での一本化は不可。
+- **2026-05-29:** 既存潮汐を調査 → 潮回りは `tide736.net`(WWO でない)。tide736.net は潮位カーブ/満干も返し**潮を完全に賄える**(決定論的でキャッシュ劣化なし)。**新推奨構成で WWO を完全撤廃可**: 天気/波/水温=Open-Meteo(商用プラン要・料金要問い合わせ)、潮=tide736.net、地形=海しる。forecast の長期キャッシュが品質劣化要因と判明(対象日近くで再取得すべき)。CLAUDE.md §2/§7・finding・assessment 更新。**残決定: この構成を AI戦略のみに適用するか既存 env data も移行するか。**
 
 ## 落とし穴・メモ
 
