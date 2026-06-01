@@ -217,7 +217,7 @@ git checkout -b feature/<topic>
 |---|---|---|---|
 | 1 | **API コントラクトのドリフト**(routes / native / openapi) | 404・型不一致・仕様書の信頼性低下 | `/contract-check` を API 変更時に必須化(ADR-0002) |
 | 2 | openapi.yml が実装に追随していない | フロント/外部連携が古い仕様を参照 | コントラクトカタログ整備(initiative) |
-| 3 | テストの薄さ(backend Feature / native は実質なし) | リグレッション検知不能 | critical path にテスト追加(ROADMAP) |
+| 3 | テスト: **backend は充実**(phpunit 181 tests・Feature/Unit、2026-05-29 実測 177 pass/4 error=GD拡張未導入のみ)、**native は実質なし** | native 側のリグレッション検知不能 | native の critical path にテスト追加(ROADMAP)。backend テストは `docker-compose-local.yml` で `./vendor/bin/phpunit`(`artisan test` 未定義)。env-data 移行は分析テストで担保 |
 | 4 | 環境データ取得が **WWO 1 本依存**(品質疑問 + forecast 長期キャッシュで劣化) | 分析の精度低下 | **ADR-0007 で WWO 廃止を決定** → 天気/海象=Open-Meteo(JMAモデル・$29/月)、潮=tide736.net、地形=海しる。移行は段階的に・分析の Feature テスト必須。キャッシュは forecast 失効(TTL)を導入(潮は決定論的で対象外) |
 | 4b | **WWO キーが backend `config/worldweatheronlineapi.php` の `env()` デフォルトにハードコード**(平文) | キー露出 | 新規 API キー(Claude/Gemini/海しる/波高)はデフォルト値に書かず `.env`/Secrets 注入。既存 WWO キーもローテーション検討 → `findings/2026-05-29-env-data-wwo-only-no-terrain.md` |
 | 5 | 認証が自前 Bearer トークン(失効・rotation 機構が薄い) | トークン漏洩時の影響 | 取り扱いを `auth.apitoken` 経由に統一 |
