@@ -18,13 +18,13 @@
 | ID | リポ | タスク | 受け入れ条件 | Status |
 |---|---|---|---|---|
 | BE-1 | BE | Open-Meteo クライアント追加(forecast=天気/風/気温、marine=波/水温、archive=過去)。設定は `config/openmeteo.php`、キーは `.env`(デフォルト値に書かない・ADR-0006) | lat/lng で生値取得できる単体確認 | 🟢 **完了・実起動検証OK**(tinker で forecast/marine 168行取得確認、2026-05-29)。ブランチ `feature/env-data-open-meteo`(commit `dc8b7fd`) |
-| BE-2 | BE | `GetEnvData` 書き換え: 天気/風/気温/波/水温を Open-Meteo に。**潮の動き(`calculateTideAction`)は WWO のまま残す**(WWO は潮専用に縮小) | 既存 `index()` シグネチャ維持で EnvCache を生成 | 🔵 |
-| BE-3 | BE | マッピング再実装: **WMO 天気コード**→`weathers`(新 `convertWmoCodeToWeatherId`)、風は `windspeed_unit=ms` 取得でバケット閾値流用、波高 m バケットも流用 | 既存マスタID体系と整合(分析が壊れない) | 🔵 |
+| BE-2 | BE | `GetEnvData` 書き換え: 天気/風/気温/波/水温を Open-Meteo に。**潮の動き(`calculateTideAction`)は WWO のまま残す**(WWO は潮専用に縮小) | 既存 `index()` シグネチャ維持で EnvCache を生成 | 🟡 実装済み(commit `036cfdd`)。phpunit 全181 green=非回帰。新パスの end-to-end 検証は BE-7 で |
+| BE-3 | BE | マッピング再実装: **WMO 天気コード**→`weathers`(新 `convertWmoCodeToWeatherId`)、風は `windspeed_unit=ms` 取得でバケット閾値流用、波高 m バケットも流用 | 既存マスタID体系と整合(分析が壊れない) | 🟢 実装済み(`convertWmoCodeToWeatherId` + 風 m/s 直判定。commit `036cfdd`) |
 | BE-4 | BE | 水深取得サービス新規: **OpenTopoData(GEBCO2020)** を lat/lng で叩き水深を取得・キャッシュ(高解像度が要れば GMRT 併用)。無料・キー不要。**水深は AI 出力の質向上の内部データのみ(アプリ非表示)→ Phase2 のプロンプト組み立て(BE-13)で利用**、env_data 表示/分析には出さない | 任意地点の水深(m)が取得できる | 🔵 |
 | BE-5 | BE | `EnvCache` に**生値カラム追加**(波高m・風速m/s・水温℃・水深m 等、additive migration)+ forecast メタ(`fetched_at`/`is_forecast`)。既存バケット列は分析互換のため維持 | migrate 追記式・既存列を壊さない | 🔵 |
 | BE-6 | BE | **キャッシュ失効(TTL)**: forecast 行は対象日が近づいたら再取得(古い予報を使わない)。潮/水深は対象外 | 1週間前予報が当日まで残らない | 🔵 |
 | BE-7 | BE | Feature テスト: `GetAnalysis*`(env_data/condition_stats/rate)+ `GetEnvData` のマッピング(HTTP モック)。移行前後で分析結果が一致 | テスト green(`/backend-check`) | 🔵 |
-| BE-8 | BE | WWO の**天気/波/水温の呼び出しを除去**(潮のみ残す)+ キーのデフォルト値削除 + ローテーション。レスポンス形が変われば `/contract-check` + openapi 更新 | WWO は潮のみ・contract green | 🔵 |
+| BE-8 | BE | WWO の**天気/波/水温の呼び出しを除去**(潮のみ残す)+ キーのデフォルト値削除 + ローテーション。レスポンス形が変われば `/contract-check` + openapi 更新 | WWO は潮のみ・contract green | 🟡 天気/波/水温の WWO 解析は除去済み(BE-2 で潮のみ抽出に)。残: `config/worldweatheronlineapi.php` のキー**デフォルト値削除** + ローテーション + contract/openapi 確認 |
 
 ## Phase 2: AI戦略 backend(ADR-0006)
 

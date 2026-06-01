@@ -57,3 +57,5 @@ docker compose -f docker-compose-local.yml exec api ./vendor/bin/phpunit   # ←
 - **(backend)ローカル Docker イメージに GD 拡張が無い** → 画像アップロード系テスト4件が `GD extension is not installed` で error。`local_docker/Dockerfile` に `gd` を追加してビルドすれば解消(要イメージ再ビルド)。
 - **(backend)永続 DB ボリュームに古い部分スキーマが残ると `migrate` が失敗**する(例: `remove_unique_from_logs_record_datetime` が実在しない制約 `logs_record_datetime_unique` を drop しようとする。実DBの制約は `logs_record_datetime_hour_unique`)。fresh/sqlite では通るので**テストには影響なし**。`migrate:fresh` は deny のため、dev DB を作り直す場合は手動対応。
 - **`php artisan test` は未定義**。`./vendor/bin/phpunit` を使う。
+- **(backend)api コンテナの CMD が起動時に `composer install --no-dev` を実行**し、bind mount 経由で host の vendor から **dev 依存(phpunit 等)を削除**する。コンテナ再起動/再作成のたびにテスト前へ `composer install`(dev込み)が必要。
+- **(backend)GD は `local_docker/Dockerfile` に導入済み**(2026-05-29、`docker-php-ext-install ... gd`)。反映にはイメージ再ビルド(`docker compose -f docker-compose-local.yml build api`)。これで画像系テストも green(181/181)。
