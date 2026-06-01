@@ -1,4 +1,8 @@
-# ADR-0007: 環境データは WWO を廃止し Open-Meteo + tide736.net + 海しる に移行
+# ADR-0007: 環境データは天気/海象を Open-Meteo に移行・潮は WWO 据え置き・水深は OpenTopoData/GMRT
+
+> **改訂 2026-05-29:** 当初「WWO 全廃 → Open-Meteo + tide736 + 海しる」を検討したが、実検証で
+> **海しるは潮汐がリンク型(数値なし)・地形も綺麗な点APIでない**ため不採用、**tide736 は港コード指定**で
+> 磯/河口に不向き → **潮は WWO 据え置き**、**水深は OpenTopoData(GEBCO)/GMRT** に確定。以下は最終内容。
 
 - **Status:** Accepted
 - **Date:** 2026-05-29
@@ -37,20 +41,26 @@
 
 ## Decision
 
-**WWO を全廃し、天気/海象 = Open-Meteo(Standard $29/月・JMAモデル)、潮 = tide736.net、地形 = 海しる に移行する(Option A)。**
-新 AI 戦略機能も既存の環境データ取得・分析もこの構成に統一する。
+**最終(2026-05-29 実検証後):**
+- **天気/風/気温/波/水温 = Open-Meteo**(Standard $29/月・JMAモデル・lat/lng)。既存 env data ごと WWO から移行。
+- **潮の動き = WWO 据え置き**(lat/lng・既存実装流用。潮の動きは天文計算でタイミング実用十分)。
+- **水深/地形 = OpenTopoData(GEBCO2020)本命 / GMRT 代替**(lat/lng・無料・JSON)。新規。
+- **不採用:** 海しる(潮汐リンク型で数値なし・地形も点API不適)、tide736(港コード指定で磯/河口に不向き)、NOAA NCEI(点深度に不適)。
+
+WWO は**潮の動きのみ**に縮小(品質懸念のある天気/波は Open-Meteo へ)。
 
 ## Consequences
 
 - **得るもの:** 日本で高品質(JMAモデル)・低コスト($29/月)・地形データ獲得・WWO品質問題の解消。
 - **失うもの:** WWO の「1ソースで全部」の手軽さ。tide736 の可用性保証(→キャッシュで吸収)。
 - **新たに発生する作業:**
-  1. backend `GetEnvData` を Open-Meteo(天気/海象)+ tide736.net(潮位)に書き換え。
-  2. `EnvCache` に **forecast 失効(TTL)**を導入(対象日に近づいたら再取得。潮は対象外)。
-  3. 既存の**マスタバケット化**を維持しつつ、AI戦略用に**生値**も保持できるようにする(設計判断)。
-  4. 海しる(MSIL)の地形/水深取得を新規追加 + 利用登録 + クレジット表記。
-  5. Open-Meteo 商用プラン契約(表記リンク)。API キーは backend `.env`/Secrets(デフォルト値に書かない・ADR-0006)。
-  6. 分析(`GetAnalysis*`)が壊れないことを Feature テストで担保。
+  1. backend `GetEnvData` の天気/風/気温/波/水温を **Open-Meteo**(forecast + marine + archive)に書き換え。**潮の動きは WWO のまま残す**。
+  2. 天気コードのマッピングを **WMO コード基準**に再実装。風 m/s・波 m のバケット閾値は流用。
+  3. `EnvCache` に **forecast 失効(TTL)**を導入(対象日に近づいたら再取得。潮は対象外)。
+  4. 既存の**マスタバケット化**を維持しつつ、AI戦略用に**生値**も保持(設計判断)。
+  5. **水深 = OpenTopoData(GEBCO)/GMRT** を新規追加(lat/lng・キャッシュ)。
+  6. Open-Meteo 商用プラン契約(表記リンク)。API キーは backend `.env`/Secrets(デフォルト値に書かない・ADR-0006)。
+  7. 分析(`GetAnalysis*`)が壊れないことを Feature テストで担保。
 - **後戻り可能性:** costly to undo(分析が依存するため移行は段階的に・テスト必須)。
 
 ## Related

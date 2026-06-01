@@ -8,21 +8,23 @@
 
 ---
 
-## Phase 1: 既存環境データの WWO 廃止 → Open-Meteo + tide736.net + 海しる(ADR-0007)
+## Phase 1: 環境データ移行 — 天気/海象=Open-Meteo・潮=WWO据え置き・水深=OpenTopoData/GMRT(ADR-0007)
 
 > 既存分析が依存するため**段階的 + Feature テスト必須**。`develop` 起点 `feature/env-data-open-meteo`。
+> 採用: Open-Meteo(天気/風/気温/波/水温)・WWO(潮の動きのみ据え置き)・OpenTopoData(水深)。海しる/tide736 は不採用。
+>
+> **GitHub Issue:** エピック [#1](https://github.com/narita0216/tsurilog-workspace/issues/1) / BE-1〜BE-8 = workspace Issue #2〜#9。
 
 | ID | リポ | タスク | 受け入れ条件 | Status |
 |---|---|---|---|---|
-| BE-1 | BE | 環境データソースのクライアント追加(Open-Meteo forecast/marine/archive、tide736 潮位、海しる地形)。設定は `config/`、キーは `.env`(デフォルト値に書かない・ADR-0006) | 各 API を叩いて生値を取得できる単体確認 | 🔵 |
-| BE-2 | BE | `GetEnvData` 書き換え: 天気/風/気温=Open-Meteo forecast、波/水温=Open-Meteo marine、潮位=tide736。WWO 呼び出しを除去 | 既存 `index()` シグネチャ維持で EnvCache を生成 | 🔵 |
-| BE-3 | BE | マッピング再実装: **WMO 天気コード**→`weathers`(新 `convertWmoCodeToWeatherId`)、風 m/s バケット(`windspeed_unit=ms`)、波高 m バケットは既存閾値流用 | 既存マスタID体系と整合(分析が壊れない) | 🔵 |
-| BE-4 | BE | 潮の動き(`calculateTideAction`)を tide736 の満潮(flood)/干潮(edd)イベントで動くよう改修。**lat/lng→最寄り港(pc/hc)の解決**が必要(現状は固定 pc=28,hc=9)。港リスト or 海しる潮汐推算(点指定)を検討 | 任意地点で上げ/下げ3分7分/満干が算出できる | 🔵 |
-| BE-5 | BE | `EnvCache` に**生値カラム追加**(波高m・風速m/s・潮位cm 等、additive migration)+ forecast メタ(`fetched_at`/`is_forecast`)。既存バケット列は分析互換のため維持 | migrate 追記式・既存列を壊さない | 🔵 |
-| BE-6 | BE | **キャッシュ失効(TTL)**: forecast 行は対象日が近づいたら再取得(古い予報を使わない)。潮は決定論的で対象外 | 1週間前予報が当日まで残らない | 🔵 |
-| BE-7 | BE | 海しる(MSIL)で**水深/海底地形**を取得・キャッシュする新サービス + 利用登録 + クレジット表記 | 地点の水深/地形が取得できる | 🔵 |
-| BE-8 | BE | Feature テスト: `GetAnalysis*`(env_data/condition_stats/rate)+ `GetEnvData` のマッピング(HTTP モック)。移行前後で分析結果が一致 | テスト green(`/backend-check`) | 🔵 |
-| BE-9 | BE | WWO 設定/コード除去 + キーのデフォルト値削除 + ローテーション。env-data レスポンス形が変われば `/contract-check` + openapi 更新 | WWO 参照ゼロ・contract green | 🔵 |
+| BE-1 | BE | Open-Meteo クライアント追加(forecast=天気/風/気温、marine=波/水温、archive=過去)。設定は `config/openmeteo.php`、キーは `.env`(デフォルト値に書かない・ADR-0006) | lat/lng で生値取得できる単体確認 | 🟡 コード実装+構文OK(`OpenMeteoClient`)。Laravel 起動での疎通確認は Docker 環境で要実施。ブランチ `feature/env-data-open-meteo` |
+| BE-2 | BE | `GetEnvData` 書き換え: 天気/風/気温/波/水温を Open-Meteo に。**潮の動き(`calculateTideAction`)は WWO のまま残す**(WWO は潮専用に縮小) | 既存 `index()` シグネチャ維持で EnvCache を生成 | 🔵 |
+| BE-3 | BE | マッピング再実装: **WMO 天気コード**→`weathers`(新 `convertWmoCodeToWeatherId`)、風は `windspeed_unit=ms` 取得でバケット閾値流用、波高 m バケットも流用 | 既存マスタID体系と整合(分析が壊れない) | 🔵 |
+| BE-4 | BE | 水深取得サービス新規: **OpenTopoData(GEBCO2020)** を lat/lng で叩き水深を取得・キャッシュ(高解像度が要れば GMRT 併用)。無料・キー不要 | 任意地点の水深(m)が取得できる | 🔵 |
+| BE-5 | BE | `EnvCache` に**生値カラム追加**(波高m・風速m/s・水温℃・水深m 等、additive migration)+ forecast メタ(`fetched_at`/`is_forecast`)。既存バケット列は分析互換のため維持 | migrate 追記式・既存列を壊さない | 🔵 |
+| BE-6 | BE | **キャッシュ失効(TTL)**: forecast 行は対象日が近づいたら再取得(古い予報を使わない)。潮/水深は対象外 | 1週間前予報が当日まで残らない | 🔵 |
+| BE-7 | BE | Feature テスト: `GetAnalysis*`(env_data/condition_stats/rate)+ `GetEnvData` のマッピング(HTTP モック)。移行前後で分析結果が一致 | テスト green(`/backend-check`) | 🔵 |
+| BE-8 | BE | WWO の**天気/波/水温の呼び出しを除去**(潮のみ残す)+ キーのデフォルト値削除 + ローテーション。レスポンス形が変われば `/contract-check` + openapi 更新 | WWO は潮のみ・contract green | 🔵 |
 
 ## Phase 2: AI戦略 backend(ADR-0006)
 
@@ -52,7 +54,7 @@
 
 ## 進め方メモ
 
-- **GitHub Issue が使えない**(MCP トークン narikei-74 が両リポにアクセス不可・`gh` 未導入。`findings/2026-05-29-github-mcp-account-mismatch-pr.md`)。本ファイルを暫定タスクボードにし、Issue 化はアクセス解決後。
+- **GitHub Issue は workspace リポ(narita0216/tsurilog-workspace)に集約**して管理(narita0216 の PAT を curl で使用。MCP トークン narikei-74 は両コードリポにアクセス不可・`gh` 未導入)。コード固有タスクも当面は workspace に Issue を立て、本ファイルと対応させる。`findings/2026-05-29-github-mcp-account-mismatch-pr.md`。
 - 着手は **Phase 1(既存移行)から**。分析の回帰を防ぐため BE-8(テスト)を早めに用意。
 - backend は現在 `main`。着手時に `develop` 起点でブランチを切る(§6.1)。
 - 課金(プレミアム)は本サービス初の決済 → 別イニシアチブ級。MVP は利用回数制限を先行。
