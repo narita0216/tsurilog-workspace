@@ -23,3 +23,4 @@ $EDITOR 000N-<short-slug>.md
 | [0004](0004-quality-gates-and-hooks.md) | 品質ゲートと hooks(php-lint / contract-check / Pint / tsc) | Accepted |
 | [0005](0005-workspace-autosave.md) | workspace メタリポを Stop フックで自動 commit & push | Accepted |
 | [0006](0006-ai-strategy-execution-architecture.md) | AI戦略機能の生成AI呼び出しは既存 Laravel backend 内で実行 | Accepted |
+| [0007](0007-env-data-replace-wwo.md) | 環境データは WWO 廃止 → Open-Meteo + tide736.net + 海しる | Accepted |
