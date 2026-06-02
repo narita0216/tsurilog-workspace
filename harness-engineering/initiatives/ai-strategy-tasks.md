@@ -29,12 +29,14 @@
 ## Phase 2: AI戦略 backend(ADR-0006)
 
 > `develop` 起点 `feature/ai-strategy-api`。1 EP=1 コントローラ / Request / `*ResponseService`(§8.2)。
+> **GitHub Issue:** BE-10〜BE-16 = workspace Issue #10〜#16。
+> **AI 基盤(クライアント)実装済み**: `AnthropicClient`(ティア差し替え可・Prompt Caching)/ `GeminiClient`(動画・テキスト)。実 API 疎通確認済み(Haiku 4.5 / Gemini 2.5 Flash)。commit `5fb3551`。モデルは env で変更可。
 
 | ID | リポ | タスク | 受け入れ条件 | Status |
 |---|---|---|---|---|
 | BE-10 | BE | DB: `ai_strategies`(事前/現地・入力・結果)、会話履歴、利用回数のマイグレーション | migrate 追記式 | 🔵 |
-| BE-11 | BE | Claude 連携(Sonnet/Haiku 振り分け + Prompt Caching)HTTP クライアント。キーは `.env` | 戦略テキストが生成できる | 🔵 |
-| BE-12 | BE | Gemini 動画解析連携(File API アップロード→解析→Claude へ受け渡し) | 動画から状況要約が返る | 🔵 |
+| BE-11 | BE | 戦略生成サービス(`AnthropicClient` 利用・Haiku/Sonnet 振り分け + Prompt Caching + 出力フォーマット) | 戦略テキストが生成できる | 🟡 クライアント基盤(`AnthropicClient`)実装済み。残: システムプロンプト + 生成サービス |
+| BE-12 | BE | Gemini 動画解析連携(小=inline_data 実装済み / 大= File API + アップロード経路) | 動画から状況要約が返る | 🟡 クライアント基盤(`GeminiClient`)実装済み。残: アップロード経路 + File API |
 | BE-13 | BE | 情報収集の組み立て(新 env/tide/海しる + 自分/他者の過去釣行 + 釣果率)→ プロンプト | 必要データが揃ってプロンプト生成 | 🔵 |
 | BE-14 | BE | エンドポイント: 事前戦略作成 / 現地戦略作成 / 履歴取得(各 1 コントローラ)。`is_success` 慣習・直近5往復 | 3 点コントラクト整合(`/contract-check`) | 🔵 |
 | BE-15 | BE | 利用制限(無料3/日・プレミアム10/日)+ 会話履歴保存 | 制限超過で適切に拒否 | 🔵 |
