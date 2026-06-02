@@ -215,12 +215,15 @@ do_run() {
     run mkdir -p "$SHOTS_DIR"
 
     # Metro をバックグラウンド起動(JS/TS 変更を配信)
-    note "Metro を起動します(expo start --dev-client, port=$METRO_PORT)"
+    # ★ EXPO_PUBLIC_APP_VARIANT=development を必ず設定する。dev-auth ルートは
+    #   __DEV__ かつ EXPO_PUBLIC_APP_VARIANT==="development" でのみ有効化されるため、
+    #   .env に無いローカルビルドでも QA で確実に認証注入できるようにする。2026-06-02 検証。
+    note "Metro を起動します(expo start --dev-client, port=$METRO_PORT, variant=development)"
     local metro_pid=""
     if [[ "$DRY_RUN" == "1" ]]; then
-        printf '\033[90m  $ (cd %s && npx expo start --dev-client --port %s) &\033[0m\n' "$NATIVE" "$METRO_PORT" >&2
+        printf '\033[90m  $ (cd %s && EXPO_PUBLIC_APP_VARIANT=development npx expo start --dev-client --port %s) &\033[0m\n' "$NATIVE" "$METRO_PORT" >&2
     else
-        ( cd "$NATIVE" && npx expo start --dev-client --port "$METRO_PORT" >/tmp/tsurilog-metro.log 2>&1 ) &
+        ( cd "$NATIVE" && EXPO_PUBLIC_APP_VARIANT=development npx expo start --dev-client --port "$METRO_PORT" >/tmp/tsurilog-metro.log 2>&1 ) &
         metro_pid=$!
         # Metro が立ち上がるのを待つ
         local i
