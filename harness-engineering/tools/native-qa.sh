@@ -233,11 +233,13 @@ do_run() {
     METRO_PID="$metro_pid"
     trap 'P="${METRO_PID:-}"; [[ -n "$P" ]] && kill "$P" 2>/dev/null || true' EXIT
 
-    # dev-client を Metro に接続(dev-client の deep link)
+    # dev-client を Metro に接続(dev-client の deep link)。
+    # ★ スキームは `exp+turilog://`(app scheme の `turilog://` ではない)。2026-06-02 実機確認。
+    # ★ simctl openurl は「"釣りログ" で開きますか?」確認ダイアログを出す → Maestro 側で「開く」をタップ。
     local metro_url="http://localhost:$METRO_PORT"
-    note "dev-client を Metro に接続: $metro_url"
-    run xcrun simctl openurl "$DEVICE" "turilog://expo-development-client/?url=$metro_url"
-    [[ "$DRY_RUN" == "1" ]] || sleep 8   # JS バンドルのロード待ち
+    note "dev-client を Metro に接続: $metro_url(確認ダイアログは Maestro が「開く」で通過)"
+    run xcrun simctl openurl "$DEVICE" "exp+turilog://expo-development-client/?url=$metro_url"
+    [[ "$DRY_RUN" == "1" ]] || sleep 5
 
     # Maestro 実行(フロー内で dev-auth 注入 + takeScreenshot)
     note "Maestro フローを実行: $FLOW"
