@@ -119,6 +119,13 @@
   - **on-site(現地戦略)未検証**: **iOS Simulator にカメラが無い**ため動画撮影フローは simulator で検証不可 → **実機が必要**。pre-trip が simulator で検証可能な flagship。
   - 詳細・automation 知見 → `findings/2026-06-02-native-devclient-qa-maestro.md`(AI戦略フォーム driving・マップ長押し・スクショ)。
 
+- **2026-06-03(自走):** **残課題 #2/#3/#4/#6 を実装・検証(リリース前ギャップ潰し)。**
+  - **#6 env-data(WWO→Open-Meteo)検証 ✅**: GetEnvData は天気/風/気温/波/水温=Open-Meteo、潮のみ WWO 据え置きを確認。分析レスポンスは従来のマスタラベル形式(raw_* は AI戦略内部用で非露出)= **native 変更不要**。回帰テスト緑(Analysis|EnvData|EnvCache 23 tests)。※Open-Meteo は潮汐表を持たないため潮の完全置換は別ソースが必要(対象外)。
+  - **#2/#3 現地戦略の大容量動画(Gemini File API)✅**: `GeminiClient::analyzeVideo` を生バイト受け取り+サイズ自動分岐(<=7MB inline / 超過 File API: resumable upload→ACTIVE 待ち→file_uri)。`local_docker/Dockerfile` に PHP 上限(post_max_size=120M/upload=100M/memory=512M)を追加(デフォルト 8M/2M で動画が PHP 層で弾かれる重大な落とし穴)。**実 Gemini で 14MB 動画を File API 経由→現地戦略生成まで検証**。Gemini は合成動画を「テストパターンで海の透明度/濁り/海面/波/うねり/風/地形は読めない」と正しく判定= VIDEO_PROMPT が狙い通り。phpunit **195 green**。詳細 → `findings/2026-06-03-onsite-video-fileapi.md`、検証ツール `tools/onsite-video-poc.sh`。
+  - **#4 履歴画面 + フッター「AI戦略」タブ ✅**: フッターに「AI戦略」タブ(sparkles)を追加しハブをタブ化(`app/(tabs)/ai-strategy.tsx`、旧 hub 削除)。履歴画面 `app/ai-strategy/history.tsx`(既存 ai_strategies/history API、新規DBテーブル不要)。**simulator で実証**: タブ→ハブ(履歴導線追加)→履歴一覧(現地/事前 2件・魚種/釣法ラベル解決)→詳細(StrategyResultView)。スクショ → `qa-artifacts/ai-strategy-tab-*`。native tsc/lint 緑。
+  - **#5(マージ)/#7(本番secrets)はオーナー対応**。**プレミアム課金(#1)は別イニシアチブ級で未着手**(現状 利用回数制限のみ)。
+  - **落とし穴**: ローカル phpunit が同一 Postgres + RefreshDatabase で **dev DB を全消去**する(QA 用ユーザ/データの作り直しが必要)。本番 CMD の `composer install --no-dev` で phpunit が消えるため、テスト時は dev 依存を入れ直す。
+
 ## 落とし穴・メモ
 
 - native に AI/外部 API キーを置かない(漏洩リスク)。必ず backend 経由。
