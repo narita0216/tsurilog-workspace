@@ -40,6 +40,10 @@ gstack/
 /harness-engineering/assessment/effectiveness/events-*.jsonl
 /harness-engineering/assessment/effectiveness/*.jsonl.lock
 
+# native dev-client の指紋キャッシュ(このマシンのシミュレータに入れた dev-client の
+# 状態を表すローカル状態。マシン依存なので共有しない。native-build-needed.sh が管理)
+/harness-engineering/assessment/.native-fingerprint-*
+
 # Secrets (defensive — should never live here, but just in case)
 .env
 .env.*

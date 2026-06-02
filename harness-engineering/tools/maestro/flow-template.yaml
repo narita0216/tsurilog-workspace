@@ -1,0 +1,72 @@
+# =============================================================================
+# Maestro フロー雛形 — 釣りログ native dev-client の自動QA + スクショ撮影
+#
+# これは tsurilog-native の `.maestro/<flow>.yaml` に置く参照実装です。
+# 1 フロー = 1 つの「実装に関わる画面の動線」を通り、各所で takeScreenshot する。
+# スクショは実質 E2E の証跡として PR に添付される(ADR-0008)。
+#
+# 前提(native 側に別 PR で入れる):
+#   - dev-client 限定の deep-link 認証注入ハンドラ
+#       turilog://dev-auth?token=<api_token>
+#     を app/_layout.tsx に実装(__DEV__ かつ variant=development のみ有効)。
+#     これで Apple/Google のネイティブサインインを回避してログイン済み状態にする。
+#   - dev variant の bundle id は com.narikei74.turilog.dev
+#
+# 実行(通常は native-qa.sh が代行する):
+#   maestro --device <udid> test \
+#     -e DEV_API_TOKEN="$TSURILOG_DEV_API_TOKEN" \
+#     -e SHOTS_DIR="$PWD/qa-artifacts/<timestamp>" \
+#     .maestro/<flow>.yaml
+#
+# 環境変数(maestro の -e で注入):
+#   DEV_API_TOKEN  dev API(https://dev.api.tsuri-log.com)で発行済みのテスト用 api_token
+#   SHOTS_DIR      スクショ出力ディレクトリ(native-qa.sh が用意)
+# =============================================================================
+
+appId: com.narikei74.turilog.dev
+env:
+  # -e で上書きされる。未指定時のフォールバック(空)。
+  DEV_API_TOKEN: ""
+  SHOTS_DIR: "qa-artifacts/latest"
+---
+# --- 1. クリーン起動 -----------------------------------------------------------
+- launchApp:
+    clearState: true        # 前回のトークン等を消してから始める(再現性のため)
+
+# --- 2. dev 認証注入(ログイン画面をスキップ) ---------------------------------
+#   deep-link を開くと _layout.tsx の dev ハンドラが accessToken を SecureStore に
+#   保存し、タブ(ホーム)へ遷移する。production ビルドではハンドラが無効なので no-op。
+- openLink: "turilog://dev-auth?token=${DEV_API_TOKEN}"
+
+# タブの主要素が出るまで待つ(セレクタは実装に合わせて調整)
+- assertVisible:
+    id: "tab-home"          # 例: タブバーのホーム。実 testID に合わせて変更
+    timeout: 20000
+
+- takeScreenshot: "${SHOTS_DIR}/01-home"
+
+# =============================================================================
+# --- 3. ここから「今回の実装に関わる画面」へ遷移してスクショ -------------------
+#   ↓↓↓ AI / 実装者が、変更したコードが通る動線に合わせて編集する部分 ↓↓↓
+#
+#   例: 釣行記録の詳細を開く
+# - tapOn:
+#     id: "tab-my-records"
+# - tapOn:
+#     text: ".*"            # 一覧の先頭セル等
+#     index: 0
+# - assertVisible:
+#     id: "record-detail-screen"
+# - takeScreenshot: "${SHOTS_DIR}/02-record-detail"
+#
+#   例: 分析画面
+# - tapOn:
+#     id: "open-analysis"
+# - extendedWaitUntil:
+#     visible:
+#       id: "analysis-chart"
+#     timeout: 30000        # 環境データ取得・集計が走るので長めに
+# - takeScreenshot: "${SHOTS_DIR}/03-analysis"
+#
+#   ↑↑↑ 編集ここまで ↑↑↑
+# =============================================================================
