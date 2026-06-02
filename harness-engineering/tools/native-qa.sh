@@ -122,7 +122,8 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 ts="${QA_TIMESTAMP:-$(date -u +%Y%m%d-%H%M%S)}"
 [[ -n "$FLOW" ]]      || FLOW="$NATIVE/.maestro/qa.yaml"
-[[ -n "$SHOTS_DIR" ]] || SHOTS_DIR="$NATIVE/qa-artifacts/$ts"
+# ★ スクショ成果物はアプリリポではなく workspace(ハーネス)に保存する(チーム方針)。
+[[ -n "$SHOTS_DIR" ]] || SHOTS_DIR="$WORKSPACE_ROOT/harness-engineering/qa-artifacts/$ts"
 
 # =============================================================================
 # build: ★ローカルビルド(expo run:ios)で dev-client を simulator に install。無料。

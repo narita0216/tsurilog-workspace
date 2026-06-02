@@ -110,6 +110,15 @@
   - **ブランチ構成(スタック):** `feature/ai-strategy-api` は **`feature/env-data-open-meteo`(Phase 1)を起点**にしている(Phase 1 が develop 未マージのため)。**owner の PR は Phase 1 → Phase 2 の順**で。Phase 1 が develop にマージされたら Phase 2 PR の base は develop。
 - **2026-05-29:** **Phase 1(env-data 移行)backend 完成**。backend をローカル Docker で起動しテスト確立。BE-1〜BE-8 実装(`OpenMeteoClient`/`GetEnvData` 書換・WMOマッピング・生値カラム・forecast TTL・`DepthService`・WWOキー既定値削除)+ 検証テスト(`GetEnvDataServiceTest`/`DepthServiceTest`)。GD を Dockerfile に追加。**phpunit 186 tests 全 green**。6コミット(`dc8b7fd`〜`1e31b7f`)を `feature/env-data-open-meteo` にローカル積み(push/PR はオーナー対応)。残: WWO キーのローテーション(オーナー)。次は Phase 2(AI戦略 backend)— Claude/Gemini キーが要る。
 
+- **2026-06-02(深夜・自走):** **ブランチ統合 + シミュレータ実機 QA 完走。**
+  - **native `feature/ai-strategy`**: AI戦略(mock+実接続)+ カメラ + AI自動QA基盤を全統合済み(owner が PR #80-82 をマージ)。ハブ画面の古いモック注記を実態に更新(`7ea2e1f`)。QA スクショ成果物は native から除去し **workspace に集約**(チーム方針: アプリリポはアプリ実装のみ)。
+  - **backend `feature/ai-strategy`**: 最新 develop(`d5df9dc`)起点で作成 = develop + Phase1(env-data/Open-Meteo)+ Phase2(AI戦略)の 8 commit を統合(`feature/env-data-open-meteo`→`feature/ai-strategy-api` のスタックを単一ブランチ化)。**ローカル(未 push、owner 対応)。**
+  - **backend E2E 検証 ✅**: ローカル Docker(`feature/ai-strategy`、migrate 済み、ANTHROPIC/GEMINI/WWO キー設定済み)で `POST /api/ai-strategy/pre-trip` が**実 Claude Haiku + 実 Open-Meteo 環境データ**で高品質戦略を生成(波高1.68m/風速10.61m/s 等の実測値を反映、`remaining_count` 利用制限も動作)。
+  - **native 実機 QA ✅(iPhone 16 Pro / iOS 18.1 simulator + ローカル backend)**: dev-auth 注入 → AI戦略ハブ → 事前戦略フォーム(魚種=アジ / マップ長押しで地点 / 日時 / 釣り方)→ 送信 → **実 AI 戦略が native UI にレンダリング**(総合判断/狙い目時間帯/おすすめポイント/攻め方6手順/推奨タックル/注意点の全6セクション。AI は座標 35.67/139.65 を東京湾奥・豊洲と正しく地理判定)。スクショ: `harness-engineering/qa-artifacts/ai-strategy-20260602-124328/`。
+  - **既存「データ分析」画面**: レンダリング確認(環境データ/分析データ タブ・日付)。地点選択は zoomed-out マップの自動長押しが NaN 座標を生む automation 限界で実データ未取得(手動 or testID 付与で解消可)。
+  - **on-site(現地戦略)未検証**: **iOS Simulator にカメラが無い**ため動画撮影フローは simulator で検証不可 → **実機が必要**。pre-trip が simulator で検証可能な flagship。
+  - 詳細・automation 知見 → `findings/2026-06-02-native-devclient-qa-maestro.md`(AI戦略フォーム driving・マップ長押し・スクショ)。
+
 ## 落とし穴・メモ
 
 - native に AI/外部 API キーを置かない(漏洩リスク)。必ず backend 経由。
