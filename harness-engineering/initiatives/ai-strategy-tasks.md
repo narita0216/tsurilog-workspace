@@ -40,17 +40,21 @@
 | BE-13 | BE | 情報収集の組み立て(env=GetEnvData / 水深=DepthService / 過去釣行=Record / 自由入力 / 動画 / 事前戦略照合)→ プロンプト | プロンプト生成 | 🟢 `StrategyService::buildContext`。commit `9209c4b` |
 | BE-14 | BE | エンドポイント: 事前 / 現地 / 履歴(各1コントローラ)。`is_success` 慣習 | 3点整合 | 🟢 `/ai-strategy/{pre-trip,on-site,history}`。pre-trip はテスト緑。on-site テストは残 |
 | BE-15 | BE | 利用制限(無料3/日・プレミアム10/日)+ 会話履歴保存 | 制限超過で拒否 | 🟢 `AiUsageService`(原子的消費)+ 会話全件保存。テスト緑。commit `9209c4b` |
-| BE-16 | BE | openapi.yml 追記 + `/contract-check` green | ドリフトなし | 🔵 残(routes/native/openapi の3点。AIキー前提の native 接続=Phase3 と合わせて) |
+| BE-16 | BE | openapi.yml 追記 + `/contract-check` green | ドリフトなし | 🟢 openapi に3エンドポイント+スキーマ追記。`/contract-check` で ai-strategy は3点整合(commit `9d52690`/native `67670d9`) |
 
 ## Phase 3: native 実接続
 
-> `develop` 起点 `feature/ai-strategy-api-integration`。モック(`feature/ai-strategy-mock`)を実 API に差し替え。
+> モック(`feature/ai-strategy-mock`)に実接続を追加(同ブランチ)。commit `67670d9`(native)。
 
 | ID | リポ | タスク | 受け入れ条件 | Status |
 |---|---|---|---|---|
-| NA-1 | NA | `api/ai-strategy/*`(1リクエスト1ファイル + 型)+ `hooks/use-ai-strategy.ts`(TanStack Query) | 型が backend と一致 | 🔵 |
-| NA-2 | NA | モックの `SAMPLE_STRATEGY_RESULT` を実レスポンスに差し替え。ローディング/エラー処理 | 実戦略が表示される | 🔵 |
-| NA-3 | NA | 動画アップロード(撮影→backend→Gemini)。プレミアム課金導線(別途要件) | 現地戦略が通しで動く | 🔵 |
+| NA-1 | NA | `api/ai-strategy/*`(1リクエスト1ファイル + 型)+ `hooks/use-ai-strategy.ts`(TanStack Query) | 型が backend と一致 | 🟢 commit `67670d9`(snake→camel mapper 付き) |
+| NA-2 | NA | モックの `SAMPLE_STRATEGY_RESULT` を実レスポンスに差し替え。ローディング/エラー処理 | 実戦略が表示される | 🟢 両画面接続・上限はトースト。モック定数削除。lint+tsc green |
+| NA-3 | NA | 動画アップロード(撮影→backend→Gemini)+ 現在地自動取得 | 現地戦略が通しで動く | 🟢 multipart 動画送信 + expo-location。**課金導線は別件(下記)** |
+
+> **`/contract-check`:** ai-strategy の routes/native/openapi は**3点整合**(ドリフトなし)。stale 3 は既存の `/analysis/*` で別件。
+> **実機通し確認**は backend 起動(Docker)+ dev client(カメラ反映の再ビルド済み)で要実施。
+> **プレミアム課金(¥500/月)** は本サービス初の決済=別イニシアチブ級。現状は利用回数制限のみ実装(無料3/プレミアム10)。is_premium フラグの切替UI/決済基盤は未実装。
 
 ---
 
