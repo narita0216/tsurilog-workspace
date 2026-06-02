@@ -254,7 +254,7 @@ README の設計思想を厳守する:
 - ハードコードした魚種/釣法 ID やマジックナンバーを避け、master API / 定数を参照。
 - 変更後は `/native-check`(`expo lint` + `tsc --noEmit`)。整形は `npm run format`(Prettier)。
 - **UI / 画面を変えたら `/native-qa`** で dev-client をシミュレータ起動 → 画面遷移 → スクショ撮影(実質 E2E)し、スクショを PR に添付する(型・lint が通る ≠ 画面が正しい)。ADR-0008。
-  - **build 要否はネイティブ指紋(`@expo/fingerprint`)で自動判定**。JS/TS だけの変更は build せず Metro 配信で確認(EAS 無料枠を温存)。`eas build` は**自走させない**(`needed` で停止 → 人間が明示実行)。
+  - **build 要否はネイティブ指紋(`@expo/fingerprint`)で自動判定**。JS/TS だけの変更は build せず Metro 配信で確認。ネイティブ変更/初回は **ローカルビルド `native-qa.sh build`(= `npx expo run:ios`、EAS 無料枠を消費しない)**。`eas build`(枠消費)は実機配布のときだけ人間が明示実行(deny 済み)。
   - 認証は dev-client 限定の deep-link 注入(`turilog://dev-auth?token=`)で回避。`TSURILOG_DEV_API_TOKEN`(dev API のテスト用トークン)を環境変数で渡す。
 - 大きめの新規 TS/UI は `expo-rn-reviewer` サブエージェントにレビューを投げる。
 

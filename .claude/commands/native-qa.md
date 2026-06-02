@@ -1,20 +1,20 @@
 ---
-description: native dev-client を iOS シミュレータで動かし画面遷移→スクショ撮影(実質E2E)。build要否は指紋で自動判定し EAS 無料枠を温存
-argument-hint: "(任意) run | install | check  [--flow <path>] [--no-build] [--dry-run]"
+description: native dev-client を iOS シミュレータで動かし画面遷移→スクショ撮影(実質E2E)。ローカルビルド(expo run:ios)主体で EAS 無料枠を消費しない。build要否は指紋で自動判定
+argument-hint: "(任意) build | run | install | check  [--flow <path>] [--device <udid>] [--no-build] [--dry-run]"
 ---
 
 `tsurilog-native` の dev-client を iOS シミュレータで起動し、**実装に関わる画面を Maestro で通ってスクショを撮る**。スクショは実質 E2E の証跡として PR に添付し、人間レビューのコストを下げる(ADR-0008)。
 
-> **EAS 無料枠の鉄則:** `eas build`(ビルド枠を消費)は **このフローからは絶対に自走させない**。build が必要と判定されたら案内して停止する。JS/TS だけの変更は build 不要 = Metro 配信で反映。
+> **EAS 無料枠の鉄則:** シミュレータ QA のビルドは **ローカル `npx expo run:ios`(= EAS 枠を消費しない)** を使う(`build` サブコマンド)。`eas build`(枠を消費)はこのフローから実行しない(実機配布のときだけ人間が明示実行)。JS/TS だけの変更は build 不要 = Metro 配信で反映。
 
 ## 0. 前提
 
-- native で `npm install` 済み。
-- iOS シミュレータが起動済み(`xcrun simctl boot <udid>` など)。
-- dev-client(`com.narikei74.turilog.dev`)がシミュレータに install 済み。未 install または指紋相違なら `install` が要る(下記 2)。
-- `TSURILOG_DEV_API_TOKEN` … dev API(`https://dev.api.tsuri-log.com`)で発行済みのテスト用 api_token。**Apple/Google ネイティブサインインを回避する dev 認証注入に必須**。
+- native で `npm install` 済み。Xcode + CocoaPods + maestro + JDK(`native-qa.sh` が `brew` の cocoapods/openjdk を自動で拾う)。
+- maestro は **`brew install mobile-dev-inc/tap/maestro`**(`brew install maestro` は別物が入るので不可)。
+- iOS シミュレータが起動済み(`xcrun simctl boot <udid>` / `open -a Simulator`)。
+- dev-client(`com.narikei74.turilog.dev`)が install 済み。未 install/指紋相違なら `build`(下記 2)。
+- `TSURILOG_DEV_API_TOKEN` … dev API(`https://dev.api.tsuri-log.com`)発行のテスト用 api_token。**Apple/Google サインインを回避する dev 認証注入に必須**。
 - native 側に dev-auth deep-link ハンドラ(`turilog://dev-auth?token=`)と `.maestro/` フローが入っていること(対の native PR)。
-- `maestro` CLI(`curl -fsSL https://get.maestro.mobile.dev | bash`)。
 
 ## 1. build 要否だけ見る
 
@@ -24,17 +24,15 @@ harness-engineering/tools/native-qa.sh check
 
 `skip`(指紋一致 = build 不要) / `needed`(初回 or ネイティブ依存変更 = build 必要)。判定本体は `native-build-needed.sh`(`@expo/fingerprint`)。
 
-## 2. ビルドが必要なとき(needed)
-
-`eas build` は **手動で承認・実行**する(枠を消費するため):
+## 2. ビルドが必要なとき(needed)— ★ローカルビルド(無料)
 
 ```bash
-# 1) ビルド(枠を消費)— 明示実行のみ。eas.json の development に "ios": {"simulator": true} が必要
-(cd tsurilog-native && eas build -p ios --profile development)
-
-# 2) install + 指紋キャッシュ更新(枠は消費しない build:run)
-harness-engineering/tools/native-qa.sh install
+# ローカル Xcode ビルドで dev-client を simulator に install + 指紋更新。EAS 枠を消費しない。
+harness-engineering/tools/native-qa.sh build --device <udid>
+# 初回は prebuild + pod install + xcodebuild で ~10-25分。以降 JS 変更では build 不要。
 ```
+
+> EAS 成果物を使う場合のみ: `eas build -p ios --profile development-simulator`(枠消費・人間が明示実行)→ `native-qa.sh install`(`eas build:run`、枠消費なし)。
 
 ## 3. QA 実行(スクショ撮影)
 

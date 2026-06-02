@@ -47,7 +47,10 @@
 
 1. **build 要否 = ネイティブ指紋(A)。** `native-build-needed.sh` が `@expo/fingerprint` で現在の指紋を生成し、「最後に `build:run` でシミュレータに入れた dev-client の指紋」(`assessment/.native-fingerprint-<variant>`、gitignore = マシン依存ローカル状態)と比較。一致なら `skip`(Metro 配信)、相違/無しなら `needed`。
 
-2. **`eas build` はハーネスから自走させない。** `native-qa.sh` は build が必要と判定したら**案内して停止**(exit 20)。実ビルドはユーザーの明示実行のみ(`.claude/settings.json` でも `eas build`/`eas submit` は deny)。install は `eas build:run -p ios --latest`(枠を消費しない)で行い、成功時に指紋キャッシュを更新する。
+2. **シミュレータ QA のビルドはローカル `npx expo run:ios`(EAS 枠を消費しない)を主経路にする。**(2026-06-02 改訂 — 当初 EAS build 前提だったが、シミュレータ dev-client はローカル Xcode ビルドで完結し無料、かつ `expo run:ios` は deny 対象外で AI が自走できると判明。「ビルド回数/枠を最小化」要件に最適。)
+   - `native-qa.sh build` が `expo run:ios` を実行し、dev-client を simulator に install + 指紋キャッシュ更新。
+   - `native-qa.sh run` の build要否 gate は `needed` のとき `build` を促す(ローカルビルドは無料だが ~10-25分と長いため run 内では自走しない)。
+   - **`eas build`(枠を消費)はハーネスから実行しない**(`.claude/settings.json` で deny)。実機配布が要るときだけ人間が明示実行。EAS 成果物を使う場合は `native-qa.sh install`(= `eas build:run`、枠を消費しない DL+install)。
 
 3. **認証回避 = dev-client 限定 deep-link 注入(C)。** native 側に `__DEV__ && variant==='development'` ガードで `turilog://dev-auth?token=` ハンドラを実装(別 PR)。**production ビルドでは完全に無効。**
 
