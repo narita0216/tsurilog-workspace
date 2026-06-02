@@ -105,6 +105,8 @@
 - **2026-05-29:** Open-Meteo の品質/料金確認 — Standard **$29/月・Marine+Weather込み・JMAモデル**で日本高品質(東京で実測OK)。
 - **2026-05-29:** 海しる/tide736 を実検証し**両方不採用**に転換。海しる潮汐は**リンク型 GeoJSON で数値なし**・地形も点API不適。tide736 は港コード指定で磯/河口に不向き。→ **最終確定(ADR-0007 改訂)**: 天気/風/気温/波/水温=**Open-Meteo(JMA)**、潮の動き=**WWO 据え置き**(潮専用に縮小)、水深=**OpenTopoData(GEBCO2020)/GMRT**(lat/lng・無料、実測で水深取得確認)。全部 lat/lng・港コードゼロ・追加コストは $29 のみ。
 - **2026-05-29:** タスク分解を最終構成に更新(`ai-strategy-tasks.md`)。**workspace リポに GitHub Issue 作成**(narita0216 PAT)— エピック #1 + Phase1 BE-1〜BE-8(#2〜#9)。
+- **2026-06-02:** **Phase 2 縦スライス着手・主要部完成**(AI戦略 backend)。AI クライアント基盤(`AnthropicClient`=Haiku 4.5・`GeminiClient`=Gemini 2.5 Flash、**実 API 疎通確認済み**・モデルは env で差し替え可)。DB(ai_strategies/会話履歴/利用回数)・`StrategyService`(情報収集+Claude生成+JSON解析)・エンドポイント(pre-trip/on-site/history)・利用制限(無料3/プレミアム10)を実装。phpunit **193 tests 全 green**。commit `9209c4b`(+ AI基盤 `5fb3551`)。残: BE-12(大容量動画 File API + native アップロード)、BE-16(openapi/contract)、on-site テスト、Phase 3(native 実接続)。
+  - **ブランチ構成(スタック):** `feature/ai-strategy-api` は **`feature/env-data-open-meteo`(Phase 1)を起点**にしている(Phase 1 が develop 未マージのため)。**owner の PR は Phase 1 → Phase 2 の順**で。Phase 1 が develop にマージされたら Phase 2 PR の base は develop。
 - **2026-05-29:** **Phase 1(env-data 移行)backend 完成**。backend をローカル Docker で起動しテスト確立。BE-1〜BE-8 実装(`OpenMeteoClient`/`GetEnvData` 書換・WMOマッピング・生値カラム・forecast TTL・`DepthService`・WWOキー既定値削除)+ 検証テスト(`GetEnvDataServiceTest`/`DepthServiceTest`)。GD を Dockerfile に追加。**phpunit 186 tests 全 green**。6コミット(`dc8b7fd`〜`1e31b7f`)を `feature/env-data-open-meteo` にローカル積み(push/PR はオーナー対応)。残: WWO キーのローテーション(オーナー)。次は Phase 2(AI戦略 backend)— Claude/Gemini キーが要る。
 
 ## 落とし穴・メモ
