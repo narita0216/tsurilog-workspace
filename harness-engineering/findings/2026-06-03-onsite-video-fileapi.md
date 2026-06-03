@@ -36,3 +36,19 @@
   → VIDEO_PROMPT が**狙い通り釣りに有用な特徴を抽出対象にしている**ことが確認できた(実海動画なら同特徴を抽出する)。
 - **実海動画での品質評価は本物の海映像が必要**。`tools/onsite-video-poc.sh <video>` に実映像を渡せば同手順で検証可能(`FORCE_FILE_API=1` で小動画でも File API を強制)。
 - native からの実機アップロードは **iOS Simulator にカメラが無い**ため実機が必要(backend パイプライン品質は上記 PoC で担保)。
+
+## テスト/本番サーバでの不具合と修正(2026-06-03 追記)
+
+テスト環境(dev.api、`php:8.4-apache` の Docker)で現地戦略が失敗 → ユーザートークンで curl 切り分け:
+- **pre-trip(動画なし)= 200 正常**(キー・Claude・DB・マイグレーションOK)
+- **on-site(動画あり)= `422 {"message":"validation.uploaded"}`** ← **3.6MB の動画でも失敗**
+
+原因: **本番 `Dockerfile`(php:8.4-apache)に php.ini 上限設定が無く、既定の `upload_max_filesize=2M`/`post_max_size=8M`** のまま。動画が PHP 層で破棄され Laravel の `uploaded` 検証が落ちていた。`local_docker/Dockerfile` だけ直していて**本番 Dockerfile を直し忘れていた**(両方必要)。
+
+修正:
+- **本番 `Dockerfile` に conf.d** を追加(`upload_max_filesize=100M`/`post_max_size=120M`/`max_execution_time=180`)。VPS で pull → コンテナ再起動で反映。
+  - `max_execution_time`: Apache mod_php 既定30s では on-site(File API+Gemini+Claude で ~40s)が**タイムアウトする**ため引き上げ。
+  - `memory_limit` は据え置き、**on-site endpoint だけ `ini_set` で 512M**(全体に影響させない方針)。
+  - ※ `upload_max_filesize`/`post_max_size` は **`PHP_INI_PERDIR` で `ini_set` 不可**。コンテナ php.ini か Apache `<Location>`/FPMプールでしか変えられない。
+- **サイズ超過の親切なエラー**: `OnSiteStrategyRequest::messages()` で `video.max`/`uploaded`/`mimetypes` に日本語文言。native は `apiClient` に `Accept: application/json` を明示(無いと検証失敗が **302 リダイレクト**になり JSON が返らない)+ `getApiErrorMessage` が 422 の `errors[field][0]` を本番でも表示。
+- 実海動画(3.6MB)での品質も別途確認済み: Gemini が「岩壁に囲まれた穏やかな入り江・透明度非常に高い・岩磯場」と正確に解析し、Claude が動画+環境データを融合した現地戦略を生成。
