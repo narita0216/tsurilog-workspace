@@ -67,6 +67,39 @@ users 1──* ai_agents 1──* ai_user_knowledge
 - **phpunit は RefreshDatabase でローカル dev DB を毎回 wipe**(既知)。テスト後は qa_tester(`00000000-0000-4000-8000-000000000001`、本機能の検証用に **is_premium=true** で再作成)を必ず復旧する。
 - 全205テスト green(新規 AiAgentEndpointTest 7件含む)。CRUD はローカル docker に live curl で疎通確認済み。知識注入の検証は Http::fake で user メッセージ本文に知識本文・AI名・「最優先」が含まれることを assert(実Claudeトークンをローカルで消費しない)。
 
+## 実コスト(2026-06-04 実測・Sonnet・コールド)
+
+実 API で計測（grounding込みの本番同等プロンプト）:
+
+| 機能 | フル辞典 | RAG-lite(辞典を関連分だけ) |
+|---|---|---|
+| 事前戦略(Sonnet) | **¥13.6**($0.085) | ¥8.7 |
+| 現地戦略(Gemini Flash動画+Sonnet) | **¥13.8** | ~¥8.9 |
+
+- **Gemini Flash の動画解析はほぼ無料**: 15秒clipで promptToken 4,756(video 4,208/audio 481)・出力69 = **¥0.26**。1分でも¥1未満。→ 「現地は3〜6倍高い」は誤りで、**事前≒現地≒同原価**(あなたの「事前=現地で同数」は原価的にも正しい)。
+- コストの主役は **Sonnet 呼び出し、特に辞典(約16kトークン)のキャッシュ書込($3.75/M)= 全体の約7割**。出力(~1,500tok)が約3割。
+- **プロンプトキャッシュは5分TTL・内容ベースでユーザー横断共有**。コールドで¥13.6、5分以内の2回目(キャッシュ読込$0.30/M)なら¥4.8。規模が出れば辞典コストは自然に薄まる。1時間TTLは書込2倍なので「まばら頻度」のときだけ得=今は5分のまま。
+- モデル別の事前1回目安: Haiku ≈¥5 / Sonnet ≈¥13.6(実測) / Opus ≈¥60〜70。
+- **RAG-lite(関連セクション抽出)で▲36%**だが、釣法はフリーテキストで抽出が難物（魚は fish_id で完全一致可）。プラン自体はフル辞典でも黒字なので **RAG は今やらない**。まず実コストロギングで読込率を観測してから判断。
+
+### プラン economics(Sonnet・実測ベース)
+- 無料: 事前 **生涯3回**(原価 一度¥24/人)。
+- ライト **¥500** / 事前10・現地10(月20): 最大原価 ~¥274(RAG-liteで~¥176)、手取り¥350〜425 → **黒字**。
+- スタンダード **¥1,200** / 30・30: 最大原価 ~¥822(RAG ~¥528)、手取り¥840〜1,020 → 黒字。
+- Opus は¥500では不可。Max プラン専用＋A/Bで「5倍の価値」を検証してから。
+
+### 実コストロギング(実装済み・2026-06-04)
+`ai_strategies` に Claude/Gemini の生トークンを記録(`input/output/cache_write/cache_read_tokens`、`gemini_prompt/output_tokens`)。円換算は BI 側。`AnthropicClient::lastUsage()` / `GeminiClient::lastUsage()` で応答の usage を拾い `StrategyService` が保存。本番で実平均原価・キャッシュ読込率が取れる。Redash 例:
+```sql
+select kind, model, count(*) n,
+       avg(input_tokens) in_avg, avg(output_tokens) out_avg,
+       avg(cache_read_tokens) cr_avg, avg(cache_write_tokens) cw_avg,
+       -- Sonnet単価で円換算(単価は要メンテ)
+       avg((input_tokens*3 + cache_write_tokens*3.75 + cache_read_tokens*0.30 + output_tokens*15)/1e6*160) jpy_avg
+from ai_strategies where created_at > now() - interval '30 days'
+group by kind, model;
+```
+
 ## ブランチ/コミット状況
 
 - backend(reomin 所有): `feature/ai-strategy` に**ローカルコミットのみ**(push は所有者)。
