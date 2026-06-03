@@ -126,6 +126,13 @@
   - **#5(マージ)/#7(本番secrets)はオーナー対応**。**プレミアム課金(#1)は別イニシアチブ級で未着手**(現状 利用回数制限のみ)。
   - **落とし穴**: ローカル phpunit が同一 Postgres + RefreshDatabase で **dev DB を全消去**する(QA 用ユーザ/データの作り直しが必要)。本番 CMD の `composer install --no-dev` で phpunit が消えるため、テスト時は dev 依存を入れ直す。
 
+- **2026-06-03(自走・続き):** **個人AIハーネス Phase 1 を実装(収益化の本命)。**
+  - 一般論AIは commodity 化 + 無料は赤字 + データ堀が作れない(40人/釣果ほぼ無し)という課題への答えとして、**ユーザが名前付きAIを作り現場知識を構造化フォームで教え込む → 戦略作成時に使うAIを選ぶ**プラットフォームを実装。作成/利用は**プレミアム月額限定**。
+  - backend: `ai_agents` / `ai_user_knowledge`(agent別) / `ai_strategies.ai_agent_id`、`UserKnowledgeService`(魚種/釣法/地点の関連度抽出)、`StrategyService` が選択AIの知識を標準辞典より優先注入、CRUD 8本(1EP1コントローラ)、premium gate + 上限。**全205テスト green + live curl 疎通**。`feature/ai-strategy` にローカルコミット(push は owner)。
+  - native: AI一覧/作成/知識管理(構造化フォーム+スポット地図)画面、戦略画面の AI 選択チップ、ハブ導線。lint/tsc green。`feature/ai-strategy` push 済み。
+  - 詳細 → `findings/2026-06-03-personal-ai-harness-phase1.md`(設計・関連抽出・Pint非gate・DB wipe 等)。
+  - **未了**: 実機での UI QA(スクショ)、プレミアム課金基盤(#1)本体、両リポ develop への PR(動作確認後・人間レビュー)。
+
 ## 落とし穴・メモ
 
 - native に AI/外部 API キーを置かない(漏洩リスク)。必ず backend 経由。
