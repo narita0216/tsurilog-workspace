@@ -143,11 +143,14 @@ group by kind, model;
   - native: `expo-iap`(StoreKit2)で `app/subscription.tsx`(プラン画面)+ `hooks/use-subscription.ts`(購入→`/api/iap/verify`→finishTransaction→ユーザー再取得)。AI戦略ハブ/自作AIバナーから導線。lint+tsc green、push 済み。
   - **残(人間/実機)**: ① `.p8` を `storage/app/iap/` に配置(`! cp`)②本番/テスト `.env` に `IAP_*` と `ANTHROPIC_MODEL_COMPLEX=claude-sonnet-4-6` ③ASC で Server Notifications V2 URL 設定 ④`expo run:ios` でネイティブビルド ⑤**実機+サンドボックス**で購入テスト(シミュレータ/.dev variant は IAP 不可、IAP商品は本番bundleに紐づく)。
 
-## コンディションスコア & 感情UX(2026-06-05)
+## コンディション/釣果率 & 感情UX(2026-06-05)
 
-UX が「AIが長文を返すだけ」で課金訴求が弱い、という指摘への対応。
-- **ConditionScoreService(backend・決定論・原価ゼロ)**: 時合(日の出/日の入りをNOAA近似で算出)・潮の動き・潮回り・水温・風・波を ◎○△ に分解し、総合(0-100)/星(1-5)/verdict/ベストタイム窓を返す。**釣果確率ではなく「条件の良さ」**(誇大表現を避ける)。`StrategyService` が env を1回取得し context とスコア両方に使用、結果に `condition`(+spot_name/agent_name=ローカル/自作AIの効きを可視化)を同梱。
-- **感情UX(native)**: `ConditionHero` = ★5段階の感情ティア(絶好調🔥「行くしかない」〜低調😴「見送りも正解」)。出現アニメ+星の段階点灯+スコアのカウントアップ+高評価は鼓動グロー(reanimated)、`expo-haptics` で触覚(高=成功/低=弱め)。根拠チップ・24hベストタイムバー・釣り場/自作AIバッジ・ティア別CTA。`AnalyzingOverlay` = 生成中の段階演出(期待感の助走)。既存の reanimated/haptics/svg を使用=**ネイティブ追加なし(再ビルド不要)**。
+UX が「AIが長文を返すだけ」で課金訴求が弱い、という指摘への対応。**釣果率は AI 推定値1本に集約**(当初の決定論スコアは「まずめ=簡単に100」で破綻したため廃止。ユーザー指示で2回改訂)。
+- **釣果率 = AI(釣り専門家)の推定値**: プロンプトに `catch_rate`(0-100)を追加し、安易な100/0を避け好条件でも70-80上限の**現実的な参考値**を出させる。文章も簡潔化(各1-2文・手順3-5)。
+- **実釣データはUIに出さず、件数つきでプロンプトに供給**し AI に信頼度を判断させる: `DataRateService` が付近の実釣ログの釣果率+件数を算出 → 「# 実釣データ N件 / X%」+ 目安「~1000件で信頼・数十件は参考程度・0件はデータ無し」。件数が少なければ環境/地形/現地md/専門知識を主軸、多ければデータを強く反映、と指示。=「データ量の弱点を md と一般知識で補い実態に近い釣果率」を狙う。
+- **3材料**(現状の釣りログ実データ件数+率 / 現地md 474点 / 釣法・魚の専門知識md)が全てプロンプトに乗る。md 不足なら追加余地(今は未追加)。
+- `ConditionScoreService` は star/score を廃止し、根拠(◎○△: 時合/潮の動き/潮回り/水温/風/波。時合は日の出日の入りをNOAA近似)+ 狙い目時間のみ返す。`condition` = ai_catch_rate / factors / best_window / spot_name / agent_name。
+- **感情UX(native)**: `ConditionHero` = 大「AI釣果予想 XX%(参考値)」+ % バンドで感情ティア(絶好調🔥70%+〜低調😴25%未満)。出現アニメ+%カウントアップ+高評価は鼓動グロー(reanimated)+`expo-haptics` 触覚。根拠チップ・24hベストタイムバー・📍釣り場/🤖自作AIバッジ・ティア別CTA。`AnalyzingOverlay`=生成中の段階演出(期待感の助走)。**既存 reanimated/haptics/svg のみ=ネイティブ追加なし(再ビルド不要)**。
 
 ## env「環境データ取得不可」の堅牢化(2026-06-05)
 
