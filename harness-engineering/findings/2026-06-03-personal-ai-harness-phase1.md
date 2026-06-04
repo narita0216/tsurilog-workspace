@@ -138,7 +138,10 @@ group by kind, model;
 - 自作AIの**作成・利用ともライト以上**に限定。
 - **開発者は課金不要**: `users.plan='staff'` を手動設定すれば全機能(StoreKit を通さない)。qa_tester は staff 済み。
 - ⚠️ **デプロイ注意**: 本番/テスト `.env` の `ANTHROPIC_MODEL_COMPLEX` が Haiku 固定のままだと有料も Haiku になる。Sonnet 化には `.env` を `claude-sonnet-4-6` に更新が必要。
-- **未実装(次ステップ)**: IAP レシート検証エンドポイント + native の購入UI/StoreKit + `/users/my` への plan 露出 + ダウングレード時挙動。プラン自体は DB 手動更新で動作確認・テスト可能。
+- **IAP 実装済み(2026-06-04)**:
+  - backend: `readdle/app-store-server-api` で検証。`POST /api/iap/verify`(transaction_id→検証→plan更新)、`POST /api/iap/app-store/notifications`(Server Notifications V2・認証なし・更新/解約/失効で自動更新)。製品マップ `tsurilog_lite→light`/`tsurilog_standard→standard`。`/users/my` に plan/plan_expires_at 露出。テスト全221+IAP12 green。
+  - native: `expo-iap`(StoreKit2)で `app/subscription.tsx`(プラン画面)+ `hooks/use-subscription.ts`(購入→`/api/iap/verify`→finishTransaction→ユーザー再取得)。AI戦略ハブ/自作AIバナーから導線。lint+tsc green、push 済み。
+  - **残(人間/実機)**: ① `.p8` を `storage/app/iap/` に配置(`! cp`)②本番/テスト `.env` に `IAP_*` と `ANTHROPIC_MODEL_COMPLEX=claude-sonnet-4-6` ③ASC で Server Notifications V2 URL 設定 ④`expo run:ios` でネイティブビルド ⑤**実機+サンドボックス**で購入テスト(シミュレータ/.dev variant は IAP 不可、IAP商品は本番bundleに紐づく)。
 
 ## ブランチ/コミット状況
 
