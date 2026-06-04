@@ -100,6 +100,17 @@ from ai_strategies where created_at > now() - interval '30 days'
 group by kind, model;
 ```
 
+## 釣り場ポイント別の現地情報 grounding(2026-06-04・パイロット)
+
+「ローカル特化」強化策。最寄りの既知ポイント(500点)に **1ポイント1md** の現地情報
+(地形/水深/季節別の魚/人気釣法/狙い目)を持たせ、戦略プロンプトに注入する。
+
+- **アーキ要点**: md は**ビルド時(Claude Code が web 調査)にオフライン生成**。**実行時の web 検索はしない**(コスト/レイテンシ増なし)。バックエンドの Claude API はデフォルト web 検索しないので、これが正解。
+- **実装**: `NearestSpotService::nearest()` が index も返す → `knowledge(index)` が `resources/ai/points/{index}.md` を読む(キャッシュ)→ `StrategyService.buildContext` が「釣り場「○○」の現地情報(最優先)」として注入。未整備の点は null=最寄り地名のみで続行(graceful fallback)。
+- **ハルシネーション対策**: web 実データのある**有名ポイントに限定**、事実中心・ヘッジ・出典日付、変動情報(規制/今の食い)は持たせない。マイナー点は「エリア一般傾向」止まりでニセ固有情報を書かない。
+- **スコープ判断**: 500点の拡張はせず既存500で対応。500全部の md 量産は web 調査コスト大なので**パイロット5点(若洲281/本牧335/城ヶ島337/加太78/平磯38)で品質検証 → レビュー後に段階拡張**。500を一気に作るなら multi-agent workflow を要検討(ユーザー opt-in 必要)。
+- geocoding は不要(既存500点が緯度経度を保持済み)。提供された geocoding キーは未使用。
+
 ## ブランチ/コミット状況
 
 - backend(reomin 所有): `feature/ai-strategy` に**ローカルコミットのみ**(push は所有者)。
