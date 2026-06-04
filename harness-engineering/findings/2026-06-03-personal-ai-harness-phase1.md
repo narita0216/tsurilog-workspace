@@ -121,6 +121,25 @@ group by kind, model;
 - **著作権**: TSURI HACK / TSURINEWS 等の良質メディアや公式・メーカーガイドは信頼ソースとして“事実の裏取り”に使うが、**1ソースに依存しない(表現が似て複製リスク)**。**事実は複数ソースで三角測量し、自前テンプレで再表現・文章/構成のコピー禁止**。md は箇条書きの事実(散文でない)＝戦略出力が特定記事に似にくい。
 - **検証ゲート**: status 系(営業/再開/移転)は web だけで取りこぼすため、実績地点・地元の人間チェックを通す(500 スケール時も必須)。
 
+## 課金プラン制(2026-06-04 実装)
+
+エンタイトルメントは **backend の `users.plan`** で管理(独自決済は持たない。App Store/Google の購入を**レシート検証して plan を更新**する想定=これは未実装の次ステップ)。
+
+| プラン | 月額(想定) | モデル | 回数(事前+現地 合算) | 期間 | 自作AI |
+|---|---|---|---|---|---|
+| free | 0 | Haiku | 3 | 生涯 | 不可 |
+| light | ¥500 | Sonnet | 20 | 月 | 可 |
+| standard | ¥1,200 | Sonnet | 50 | 月 | 可 |
+| staff | – | Sonnet | 100000 | 月 | 可(開発者comp) |
+
+- 定義は `config/ai_strategy.php` の `plans`。`User::planConfig()/isPaid()/canCreateAgent()`。
+- `AiUsageService` を日次→**プラン別の期間制限**(free=lifetime合算 / 有料=今月合算)に refactor。
+- `StrategyService` の使用モデルを**プランの tier**で切替(無料Haiku/有料Sonnet)。`anthropic.models.complex` 既定を `claude-sonnet-4-6` に。
+- 自作AIの**作成・利用ともライト以上**に限定。
+- **開発者は課金不要**: `users.plan='staff'` を手動設定すれば全機能(StoreKit を通さない)。qa_tester は staff 済み。
+- ⚠️ **デプロイ注意**: 本番/テスト `.env` の `ANTHROPIC_MODEL_COMPLEX` が Haiku 固定のままだと有料も Haiku になる。Sonnet 化には `.env` を `claude-sonnet-4-6` に更新が必要。
+- **未実装(次ステップ)**: IAP レシート検証エンドポイント + native の購入UI/StoreKit + `/users/my` への plan 露出 + ダウングレード時挙動。プラン自体は DB 手動更新で動作確認・テスト可能。
+
 ## ブランチ/コミット状況
 
 - backend(reomin 所有): `feature/ai-strategy` に**ローカルコミットのみ**(push は所有者)。
