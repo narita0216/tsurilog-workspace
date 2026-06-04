@@ -143,6 +143,19 @@ group by kind, model;
   - native: `expo-iap`(StoreKit2)で `app/subscription.tsx`(プラン画面)+ `hooks/use-subscription.ts`(購入→`/api/iap/verify`→finishTransaction→ユーザー再取得)。AI戦略ハブ/自作AIバナーから導線。lint+tsc green、push 済み。
   - **残(人間/実機)**: ① `.p8` を `storage/app/iap/` に配置(`! cp`)②本番/テスト `.env` に `IAP_*` と `ANTHROPIC_MODEL_COMPLEX=claude-sonnet-4-6` ③ASC で Server Notifications V2 URL 設定 ④`expo run:ios` でネイティブビルド ⑤**実機+サンドボックス**で購入テスト(シミュレータ/.dev variant は IAP 不可、IAP商品は本番bundleに紐づく)。
 
+## コンディションスコア & 感情UX(2026-06-05)
+
+UX が「AIが長文を返すだけ」で課金訴求が弱い、という指摘への対応。
+- **ConditionScoreService(backend・決定論・原価ゼロ)**: 時合(日の出/日の入りをNOAA近似で算出)・潮の動き・潮回り・水温・風・波を ◎○△ に分解し、総合(0-100)/星(1-5)/verdict/ベストタイム窓を返す。**釣果確率ではなく「条件の良さ」**(誇大表現を避ける)。`StrategyService` が env を1回取得し context とスコア両方に使用、結果に `condition`(+spot_name/agent_name=ローカル/自作AIの効きを可視化)を同梱。
+- **感情UX(native)**: `ConditionHero` = ★5段階の感情ティア(絶好調🔥「行くしかない」〜低調😴「見送りも正解」)。出現アニメ+星の段階点灯+スコアのカウントアップ+高評価は鼓動グロー(reanimated)、`expo-haptics` で触覚(高=成功/低=弱め)。根拠チップ・24hベストタイムバー・釣り場/自作AIバッジ・ティア別CTA。`AnalyzingOverlay` = 生成中の段階演出(期待感の助走)。既存の reanimated/haptics/svg を使用=**ネイティブ追加なし(再ビルド不要)**。
+
+## env「環境データ取得不可」の堅牢化(2026-06-05)
+
+主因は Open-Meteo ではなく**潮(WWO/tide736)**。潮取得が失敗すると `GetEnvData::index` が throw → env 全体が null →「取得不可」になっていた(全か無か)。
+- `tid_type`/`tid_action` を **nullable 化**(migration)、`fetchWwoTidesByDate`/`getTidType`/`calculateTideAction` を try/catch で **degrade**(潮 null・天気/風/波/水温は保存)、`buildEnvDtos` は潮無しでも行を保存(従来は丸ごと skip)。
+- consumer を null 安全化: 分析 env_data コントローラ・戦略プロンプト・ConditionScore。
+- 全225 green(分析テストで担保)。**根本対処は WWO 廃止→tide736/Open-Meteo 移行(ADR-0007)**。
+
 ## ブランチ/コミット状況
 
 - backend(reomin 所有): `feature/ai-strategy` に**ローカルコミットのみ**(push は所有者)。
