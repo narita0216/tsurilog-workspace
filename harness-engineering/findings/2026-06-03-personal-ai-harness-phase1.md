@@ -108,7 +108,11 @@ group by kind, model;
 - **アーキ要点**: md は**ビルド時(Claude Code が web 調査)にオフライン生成**。**実行時の web 検索はしない**(コスト/レイテンシ増なし)。バックエンドの Claude API はデフォルト web 検索しないので、これが正解。
 - **実装**: `NearestSpotService::nearest()` が index も返す → `knowledge(index)` が `resources/ai/points/{index}.md` を読む(キャッシュ)→ `StrategyService.buildContext` が「釣り場「○○」の現地情報(最優先)」として注入。未整備の点は null=最寄り地名のみで続行(graceful fallback)。
 - **ハルシネーション対策**: web 実データのある**有名ポイントに限定**、事実中心・ヘッジ・出典日付、変動情報(規制/今の食い)は持たせない。マイナー点は「エリア一般傾向」止まりでニセ固有情報を書かない。
-- **スコープ判断**: 500点の拡張はせず既存500で対応。500全部の md 量産は web 調査コスト大なので**パイロット5点(若洲281/本牧335/城ヶ島337/加太78/平磯38)で品質検証 → レビュー後に段階拡張**。500を一気に作るなら multi-agent workflow を要検討(ユーザー opt-in 必要)。
+- **スコープ判断**: 500点の拡張はせず既存500で対応。
+- **採用上限距離(2026-06-04 追加)**: `point_name_max_km`(既定30km・超で地名当てず座標のみ)、`point_knowledge_max_km`(既定3km・超でポイント md 非注入)。どの点からも遠い場所で別の場所の情報を誤適用しないため。
+- **全500点の md 生成 完了(2026-06-04)**: パイロット5点+手動和歌山等6点の後、**multi-agent workflow** で残りを生成(ユーザー明示 opt-in)。バッチ1=30点(skip0)、バッチ2=459点(ok=433/skip=26/fail=0)。**合計 474/500 点に md 整備、26点は skip**(情報2ソース未満・釣り禁止区域・釣り場でない施設等=でっち上げ回避)。skip 点はファイル未生成=最寄り地名 fallback で動作。
+- **コスト(セッション側・ユーザーAPI課金ではない)**: 計 ~1480万トークン(sonnet)≈ $70 一度きり。各 agent が WebSearch で複数ソース裏取り→自前表現で md を Write。
+- **workflow 実装メモ**: `agent()` の `args` は文字列で渡るので `JSON.parse` で受ける。45KB の点リストは args 直渡しを避け、各 agent が `/tmp/remaining_points.json` を Read して担当 index を処理する設計(args は {file,from,to} だけ)。agentType='general-purpose'(WebSearch+Write 必要)、model='sonnet'。
 - geocoding は不要(既存500点が緯度経度を保持済み)。提供された geocoding キーは未使用。
 
 ### ポイント md 生成ポリシー(鮮度・著作権・検証)
