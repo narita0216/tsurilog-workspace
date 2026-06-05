@@ -22,19 +22,26 @@
 - Q1 流入経路(YouTube/TikTok/IG/X/Web/AppStore/友人/その他)、Q2 釣行予定(今週末/1ヶ月内/予定なし)、Q3 頻度(週1+/月2/月1/数ヶ月/半年/年1/行かない)。
 
 ### 3. 運営者管理画面(Blade)
-- `routes/admin.php` を **web グループ無し(ステートレス)** で登録し `admin.ip` で保護(IP許可リスト `ADMIN_ALLOWED_IPS` + 任意 Basic 認証 `ADMIN_BASIC_USER/PASS`)。未設定時は local のみ許可。
-  - ※ web グループを外したのは、管理画面が session/cookie/CSRF 不要で、`EncryptCookies` の APP_KEY 依存を避けるため(テストの `MissingAppKeyException` 回避にもなった)。
+- **当初 IP 制限で実装 → ユーザー要望でログイン方式に変更(2026-06-05)。** メール+パスワード(`.env` の `ADMIN_EMAIL`/`ADMIN_PASSWORD`)のセッションログイン。`AdminAuth` ミドルウェアで `/admin` を保護、未ログインは `/admin/login` へ。パスワード未設定ならログイン不可(安全側)。
+  - 管理画面は **web グループ(session/cookie)** で `routes/web.php` に登録。→ `EncryptCookies` が **APP_KEY 必須**(後述の落とし穴)。
+  - 削除: `RestrictAdminIp` ミドルウェア / `routes/admin.php` / `ADMIN_ALLOWED_IPS`/`ADMIN_BASIC_*`。
 - `/admin` ダッシュボード: 日別DAU(操作ログ)・API別利用・**リピート率(操作ログ2日以上/1日以上)**・アンケート分布を **Chart.js(CDN)** で可視化。KPIカード(総ユーザー/回答数/活動ユーザー/リピート率/記録作成ユーザー)。
 - `/admin/users`: 活動日数・最終活動・釣行記録数・アンケート回答の一覧(Postgres は PK group by で users.* 集計可)。
 
 ## テスト・確認
-- backend テスト追加: 操作ログ(1日1回/非認証は記録なし)、アンケート(保存/422)、管理画面(許可IP=200・不許可=403)。**全187 green**。
-- テストは sqlite :memory:(`phpunit.xml`)。**dev の Postgres は触らない**(qa_tester 再作成不要)。phpunit.xml にテスト用 APP_KEY を追加。
+- backend テスト: 操作ログ(1日1回/非認証は記録なし)、アンケート(保存/422)、管理画面(未ログイン→/login・ログイン成功→ダッシュボード・ログアウト・誤資格情報)。**全191 green**(sqlite)。
+- 管理画面の runtime も確認: `/admin`→302→`/admin/login`、`/admin/login`→200。
+
+## ⚠️ 落とし穴: テストが開発用 Postgres を破壊していた(重大)
+- **症状**: `docker-compose-local.yml` は `env_file: .env` でコンテナのプロセス環境に `APP_ENV=local` / `DB_CONNECTION=pgsql` / (起動時点の)`APP_KEY` を焼き付ける。Laravel の `env()` は **`$_SERVER`(ServerConstAdapter)を `$_ENV` より優先**して読むため、`phpunit.xml` の `<env>`(sqlite/testing)が**握りつぶされ**、`RefreshDatabase` が**開発用 Postgres `tsurilog` に `migrate:fresh`**(全テーブル DROP)を実行していた。前セッションの「sqlite で実行・dev pg は触らない」という認識は**誤り**で、ローカルでは pg が毎回ワイプされていた(`users/records/logs=0` の原因)。
+- **空 APP_KEY も同様**に `$_SERVER` 経由で焼き付き、web グループの `EncryptCookies` が `MissingAppKeyException`(前セッションが admin をステートレス化した真因)。
+- **対策**: `tests/bootstrap.php` を新設し、env リポジトリ構築前に `$_SERVER/$_ENV/putenv` を強制上書き(`APP_ENV=testing`/`DB_CONNECTION=sqlite`/`:memory:`/有効な `APP_KEY`)。`phpunit.xml` の `bootstrap` をこれに変更。→ テストは必ず sqlite :memory:。**CI は env_file 汚染が無いので元から sqlite で無害**。
+- **ローカル docker の APP_KEY**: コンテナ起動時に `.env` を焼き付けるため、`.env` の `APP_KEY` が空のままだと **/admin が runtime で 500**。`php artisan key:generate` 後に **`docker compose -f docker-compose-local.yml up -d --force-recreate api`** で反映が必要(`docker restart` では env_file 再読込されない)。**注意: 同コンテナの entrypoint は `composer install --no-dev` を走らせ phpunit を消す → recreate 後は `composer install` で dev 依存を戻す**。
 
 ## デプロイ時の手作業
 - backend pull(`feature/admin-analytics`)→ `composer install` 不要(新規依存なし)→ `php artisan migrate`(operation_logs / users survey 列)。
-- **`.env` に `ADMIN_ALLOWED_IPS`(運営者の固定IP・カンマ区切り)を設定**(未設定だと本番は全403)。必要なら `ADMIN_BASIC_USER/PASS` も。
-- 管理画面 URL: `https://<backend>/admin`。
+- **`.env` に `ADMIN_EMAIL` と `ADMIN_PASSWORD` を設定**(パスワード未設定だとログイン不可)。**`APP_KEY` 必須**(管理画面のセッション暗号化)。
+- 管理画面 URL: `https://<backend>/admin`(→ `/admin/login`)。
 - native は `feature/onboarding-survey` を pull。
 
 ## 戦略メモ
