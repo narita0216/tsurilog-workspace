@@ -22,6 +22,22 @@
 - native: `tsc --noEmit` / `expo lint` クリーン(0 error/0 warning)。
 - **未実施: `/native-qa`(dev-client 実機/シミュレータでの目視確認)**。UI 変更が大きいため、ビルドして動線確認推奨(特に: 分析のグラフ↔環境カード同期、お気に入りピンのラベル編集、最近の釣果の「さらに表示」)。
 
+## /native-qa 実施結果(2026-06-07・ローカルDB)
+- 「再ビルド要否」: 私の差分は **JS/TS のみ**(api/app/components/hooks/types/utils)→ **再ビルド不要**。指紋が `needed` を返すのは、シミュレータの dev-client が develop の以前のネイティブ依存追加(expo-haptics 等)より古いため。私の変更が原因ではない。
+- **ADR-0008 の native 側 QA 基盤が未実装だったことが判明** → 今回実装した:
+  - `hooks/use-dev-auth.ts`(`turilog://dev-auth?token=` 注入、`__DEV__` 限定)。
+  - ただし dev-client + 独自スキームの `simctl openurl` は iOS の「開きますか？」確認が出てヘッドレスで詰む → **`EXPO_PUBLIC_DEV_AUTH_TOKEN` での起動時自動ログイン fallback** を追加(これで確認ダイアログ不要)。
+  - `.maestro/qa.yaml` フロー雛形を追加。
+- 実行: ローカル Docker backend にQAユーザー/ピン2件/公開釣果8件を seed → `.env` を `http://localhost:8080` + dev トークンにして **`npx expo run:ios`(ローカルビルド・EAS無料枠不使用)** → シミュレータ起動 → 自動ログイン。
+- **このQAで実バグを検出&修正**: backend は `pins.lat/lng` を decimal=**文字列**で返すため、`FavoritePinCard` の `pin.lat.toFixed()` が `is not a function` でクラッシュ。`Number()` で修正済み。
+- 確認できた画面: ダッシュボード「お気に入りの釣り場」(ラベル付き/未設定ピンの表示、編集鉛筆)= 正常描画。証跡 `tsurilog-native/qa-artifacts/beginner-focus/dashboard-favorites.png`。
+- **未確認(ツール制約)**: 「近場の釣り場」「最近の釣果(さらに表示)」「分析画面」は、シミュレータのシステムダイアログ(通知許可・dev-client オンボーディング)が被さり、タップ手段(**Maestro=Java 未導入 / cliclick 無し**)が無いため自動スクショ未取得。Java(JDK)導入 or 実機/手動で要確認。
+- 環境メモ: Metro は CI モードだと redbox/Fast Refresh が効かず混乱したため、通常モードで起動推奨。`.env` は QA 後に dev ドメインへ復元済み。ローカル Docker DB にQA seed データが残存(ローカルのみ)。
+
+## ハーネス TODO(別途)
+- `harness-engineering/tools/native-qa.sh` を `EXPO_PUBLIC_DEV_AUTH_TOKEN` 自動ログイン方式に対応させる(openurl 確認ダイアログ回避)。
+- Maestro 実行に JDK が要る点を README/前提に明記(or env-token + simctl screenshot のダイアログ非依存フローを既定化)。
+
 ## デプロイ手作業
 - backend pull → `php artisan migrate`(pins.label)。owner が `feature/beginner-focus` を push。
 - native は `feature/beginner-focus` を pull。
