@@ -34,7 +34,23 @@
 - **未確認(ツール制約)**: 「近場の釣り場」「最近の釣果(さらに表示)」「分析画面」は、シミュレータのシステムダイアログ(通知許可・dev-client オンボーディング)が被さり、タップ手段(**Maestro=Java 未導入 / cliclick 無し**)が無いため自動スクショ未取得。Java(JDK)導入 or 実機/手動で要確認。
 - 環境メモ: Metro は CI モードだと redbox/Fast Refresh が効かず混乱したため、通常モードで起動推奨。`.env` は QA 後に dev ドメインへ復元済み。ローカル Docker DB にQA seed データが残存(ローカルのみ)。
 
+## 追加対応(2026-06-07 第2ラウンド)
+- **ピン自動ラベルが効かない根本原因**: 主経路のマップ保存モーダル `selected-pin-modal.tsx` が `label` を渡していなかった(分析画面のみ対応済みだった)。マップ/records も自動ラベルを付与。しきい値 2km→**8km**(ポイント間隔の中央値≈5.8km に合わせ実用化。p75=11.4km)。
+- **分析画面のカクつき**: 環境カルーセル+時間ページネーションの FlatList スクロールとグラフの reanimated pan が双方向同期で競合 → **カルーセル/チップを廃止し「グラフのスライドだけ」で時間選択**、環境は選択時刻に追従する**単一 HourCard** に。日付選択を最上部(日付ピル)へ。釣果率は魚アイコン+大きな % でリッチ表示。
+- ダッシュボードもセクション見出しにアイコン+アクセントでリッチ化。
+- `use-dev-auth` に `EXPO_PUBLIC_DEV_AUTH_REDIRECT`(認証後の遷移先)を追加=ヘッドレスで特定画面に直行できる QA 補助(dev限定)。
+
+### ヘッドレス UI QA の壁(重要・未解決)
+- iOS Simulator の**システムダイアログ(位置情報許可・通知許可・dev-client オンボーディング)**が画面を覆い、これを閉じる**タップ自動化が本環境では全滅**:
+  - Maestro = **JDK 未導入**で起動不可。
+  - AppleScript/System Events = **アクセシビリティ権限なし**(-1719)。
+  - `cliclick` = 導入したが、ウィンドウ座標取得が AX 依存で詰む。
+  - `simctl privacy grant location-always` でも react-native-maps の許可ダイアログは抑止されなかった。
+- 結果、ダッシュボード(お気に入り)は描画確認できたが、**分析画面のクリーンなスクショは未取得**。アプリ自体はシミュレータで稼働(QAユーザー自動ログイン→/analysis 直行)しているので、ダイアログを手で閉じれば確認可能。
+
 ## ハーネス TODO(別途)
+- **JDK 導入**(Maestro 前提)or **ターミナルにアクセシビリティ権限付与**(cliclick/osascript でダイアログ自動消し)。これが無いと自動 UI QA は成立しない。
+- 起動時に位置情報・通知を `simctl` で確実に事前許可する手順 / dev でこれらの prompt を抑止するガード。
 - `harness-engineering/tools/native-qa.sh` を `EXPO_PUBLIC_DEV_AUTH_TOKEN` 自動ログイン方式に対応させる(openurl 確認ダイアログ回避)。
 - Maestro 実行に JDK が要る点を README/前提に明記(or env-token + simctl screenshot のダイアログ非依存フローを既定化)。
 
