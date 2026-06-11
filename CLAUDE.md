@@ -52,7 +52,7 @@ tsurilog-workspace/
 | `pin`(ピン) | ユーザーが保存した地点(緯度経度)。半径圏内の記録/分析の起点 |
 | `is_fishing`(釣行中) | ユーザーが現在釣行中かのフラグ。釣行開始でオン、終了/自動終了でオフ |
 | `master`(マスタ) | 魚種(fish)・釣法(fishing_style)・天気・風速・波高・潮汐種別などの定義データ |
-| `env data`(環境データ) | 釣行地点・時刻の気象/海象(潮・潮位・気温・水温・風・波)。**天気/波/水温/風/潮位 = WWO**(backend `app/Services/GetEnvData.php` → `EnvCache`、mesh 5km×date×hour)、**潮回り(tid_type)= tide736.net**(`FetchTidTypeService`)。値は**マスタID にバケット化**して保存(生値でない)。forecast を再取得せず長期キャッシュ=精度劣化要因。**地形/水深は未取得**。詳細 → `findings/2026-05-29-env-data-wwo-only-no-terrain.md` |
+| `env data`(環境データ) | 釣行地点・時刻の気象/海象(潮・潮位・気温・水温・風・波)。**天気/風/気温/波/水温 = Open-Meteo**(`OpenMeteoClient`、JMAモデル)、**潮の動き(tid_action)= WorldTides extremes**(`WorldTidesClient`)、**潮回り(tid_type)= tide736.net**(`FetchTidTypeService`)。WWO は 2026-06 に完全廃止。`GetEnvData.php` → `EnvCache`(mesh 5km×date×hour)。**マスタID バケット値 + 生値(raw_*)を両方保存**。forecast は TTL(12h)で再取得、潮 null 行は自己修復。**地形/水深は未取得**。経緯 → `findings/2026-06-12-handoff-tide-api-migration.md` |
 | `analysis`(分析) | ピン半径圏内の釣れやすさ・魚種/釣法傾向・混雑状況の集計 |
 | `mesh`(メッシュ) | 環境データのキャッシュ単位(500m / 1km / 5km の地理メッシュ) |
 | `dev-auth`(開発用認証注入) | dev-client 限定の deep-link(`turilog://dev-auth?token=`)で api_token を注入し、Apple/Google ネイティブサインインを回避してログイン済みにする仕組み。**`__DEV__` かつ development variant のみ有効**(production は無効)。AI の自動 UI QA(`/native-qa`)の前提。ADR-0008 |
@@ -219,8 +219,8 @@ git checkout -b feature/<topic>
 | 1 | **API コントラクトのドリフト**(routes / native / openapi) | 404・型不一致・仕様書の信頼性低下 | `/contract-check` を API 変更時に必須化(ADR-0002) |
 | 2 | openapi.yml が実装に追随していない | フロント/外部連携が古い仕様を参照 | コントラクトカタログ整備(initiative) |
 | 3 | テスト: **backend は充実**(phpunit 181 tests・Feature/Unit、2026-05-29 実測 177 pass/4 error=GD拡張未導入のみ)、**native は実質なし** | native 側のリグレッション検知不能 | native の critical path にテスト追加(ROADMAP)。backend テストは `docker-compose-local.yml` で `./vendor/bin/phpunit`(`artisan test` 未定義)。env-data 移行は分析テストで担保。**UI は `/native-qa`(Maestro + dev-client スクショ)で動線確認 = 軽量 E2E(ADR-0008)** |
-| 4 | 環境データ取得が **WWO 1 本依存**(品質疑問 + forecast 長期キャッシュで劣化) | 分析の精度低下 | **ADR-0007 で WWO 廃止を決定** → 天気/海象=Open-Meteo(JMAモデル・$29/月)、潮=tide736.net、地形=海しる。移行は段階的に・分析の Feature テスト必須。キャッシュは forecast 失効(TTL)を導入(潮は決定論的で対象外) |
-| 4b | **WWO キーが backend `config/worldweatheronlineapi.php` の `env()` デフォルトにハードコード**(平文) | キー露出 | 新規 API キー(Claude/Gemini/海しる/波高)はデフォルト値に書かず `.env`/Secrets 注入。既存 WWO キーもローテーション検討 → `findings/2026-05-29-env-data-wwo-only-no-terrain.md` |
+| 4 | ~~環境データ取得が WWO 1 本依存~~ **解消済み(2026-06-12 リリース)**: 天気/海象=Open-Meteo、潮の動き=WorldTides、潮回り=tide736.net に移行し WWO 完全廃止 | — | 残タスク: WorldTides の「1リクエスト=1ユーザー」条項とキャッシュ配信の整合確認、気象庁潮位表との実値照合 → `findings/2026-06-12-handoff-tide-api-migration.md` |
+| 4b | ~~WWO キーのハードコード~~ **解消済み**(config ごと削除)。教訓は継続: API キー(Claude/Gemini/WorldTides/Open-Meteo 等)はデフォルト値に書かず `.env`/Secrets 注入 | キー露出 | `findings/2026-05-29-env-data-wwo-only-no-terrain.md` |
 | 5 | 認証が自前 Bearer トークン(失効・rotation 機構が薄い) | トークン漏洩時の影響 | 取り扱いを `auth.apitoken` 経由に統一 |
 | 6 | リポ所有者が分かれている(native: narita0216 / backend: reomin) | 権限・PR フローの分断 | MCP/PAT のスコープ確認(`.claude/README.md`) |
 

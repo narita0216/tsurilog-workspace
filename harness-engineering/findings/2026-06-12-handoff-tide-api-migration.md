@@ -52,6 +52,10 @@
 3. 潮 null のキャッシュ行は TTL 間隔で再取得する**自己修復**を追加(障害期間の行が永久に「不明」のまま残らない)。
 phpunit 205件緑。ユーザーの WorldTides キーは取得済み(.env の `WORLDTIDES_API_KEY` に設定する。コードには含めていない)。
 
+## 進捗更新3(2026-06-12 リリース後)
+- **main にマージ・リリース済み**(PR #124 develop → #125 main、main=`8b31744`)。
+- backend `feature/ai-strategy` に最新 main をマージ(`1f2a5fd`)。コンフリクト5ファイルは env-data 系のみで、**全て main(WorldTides 版)を採用**。AI 固有の変更の喪失なし(diff で検証)。WWO はコメント2箇所(廃止経緯)を除き完全消滅。phpunit 272件緑(AI戦略テスト含む)。push はユーザー。
+
 ## 次の一手(順番)
 1. **WorldTides の契約確認(ユーザー)**: 「Each API request = single user」条項がキャッシュ&全ユーザー配信と矛盾しないか確認 → OK ならキー取得し本番 .env に `WORLDTIDES_API_KEY` を設定。
 2. push(ユーザー)→ PR(緊急なので main 直 PR か develop 経由かはユーザー判断)→ デプロイ。デプロイ前に本番 .env へキー設定必須(未設定だと潮だけ null で動く=500にはならない)。
