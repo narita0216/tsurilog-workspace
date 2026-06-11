@@ -35,10 +35,22 @@
 - 本番DBは `migrate --force` 済み(operation_logs 等)。
 - サブスクは ASC で「送信準備完了」、**初回はAppバージョン審査に紐づけて提出**が必要。Sandboxテスターは別途必須。
 
+## 進捗更新(2026-06-12 このセッション)
+ユーザー指示で方針が「2段階」から「**WWO 完全廃止の一括移行**」に変わり、実装まで完了した。
+
+- backend 新ブランチ **`feature/env-data-openmeteo-worldtides`**(最新 main `e645697` 起点)にコミット済み: **`3814b9b`**。
+  - `fix/tide-data-error` に置いてあった未コミット15件はこのブランチへ引き継いだ(`fix/tide-data-error` は空のまま残骸。削除可)。
+  - 内容: Open-Meteo(天気/風/気温/波/水温・既存移植のまま)+ **WorldTides extremes で tid_action を再実装**(`app/Services/WorldTidesClient.php` + `config/worldtides.php`)。バケット判定ロジック(上げ3分/7分等)と出力は不変。**WWO は完全削除**(config・ハードコードキー・サンプルJSON含む)。潮失敗は nullable 続行(500再発防止)。
+  - phpunit **204 tests 緑**(コンテナで composer install 済み・GD エラーも解消)。Pint PASS。
+- WorldTides 実装詳細: extremes を JST 日付でグルーピング。forecast=今日起点7日(1クレジット)、過去=前日起点3日(日界ズレ対策)。`dt`(unix UTC)→ Asia/Tokyo 変換。key 未設定/エラー時は warning ログ + 空配列。
+- テスト: phpunit.xml に `WORLDTIDES_API_URL/KEY` を force 固定(.env 漏れ防止)。失敗時堅牢性テスト追加。
+
 ## 次の一手(順番)
-1. backend `fix/tide-data-error`: `composer install`(dev) → `phpunit` 緑確認 → 未コミット15件をコミット(緊急の500止め)。本番デプロイはユーザー。
-2. WorldTides にキャッシュ&複数ユーザー利用(商用)の可否を確認(英語問い合わせ下書きは作成可)。OKならキー取得→品質実値照合→`calculateTideAction` を WorldTides extremes に差し替え。
-3. WWO 返金/復旧の返信対応。
+1. **WorldTides の契約確認(ユーザー)**: 「Each API request = single user」条項がキャッシュ&全ユーザー配信と矛盾しないか確認 → OK ならキー取得し本番 .env に `WORLDTIDES_API_KEY` を設定。
+2. push(ユーザー)→ PR(緊急なので main 直 PR か develop 経由かはユーザー判断)→ デプロイ。デプロイ前に本番 .env へキー設定必須(未設定だと潮だけ null で動く=500にはならない)。
+3. 品質実値照合: 気象庁潮位表(東京/大阪/那覇)と WorldTides extremes の時刻を突き合わせ。
+4. WWO 返金/復旧の返信対応(復旧しても戻さない。返金交渉のみ)。
+5. マージ後: workspace `CLAUDE.md` の env data 用語(「天気/波/水温/風/潮位=WWO」)と既知リスク#4/4b を更新。
 
 ## ユーザーの運用ルール(厳守)
 - **push はユーザーがやる**(AIはローカルcommitまで)。**有料契約もユーザー**。
