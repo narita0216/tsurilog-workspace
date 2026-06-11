@@ -45,6 +45,13 @@
 - WorldTides 実装詳細: extremes を JST 日付でグルーピング。forecast=今日起点7日(1クレジット)、過去=前日起点3日(日界ズレ対策)。`dt`(unix UTC)→ Asia/Tokyo 変換。key 未設定/エラー時は warning ログ + 空配列。
 - テスト: phpunit.xml に `WORLDTIDES_API_URL/KEY` を force 固定(.env 漏れ防止)。失敗時堅牢性テスト追加。
 
+## 進捗更新2(2026-06-12 同日・「不明」バグ修正)
+潮の動きが「不明」と出る件をユーザーの実キーで調査し、**`0bdfa25`** で修正済み:
+1. **extremes フラグが送信されていなかった**(Guzzle が URL 直書きクエリを query 配列で上書き → 常に空応答)。query 配列に `'extremes' => ''` で修正。実キーで extremes 取得を確認済み → `findings/2026-06-12-guzzle-query-overwrite-flag-params.md`
+2. **下げ3分/下げ7分の判定が WWO 時代から逆**だった。仕様(満潮→下げ3分(10-50%)→下げ7分(50-90%)→干潮、上げも対称)に統一。6種の時系列テスト追加。
+3. 潮 null のキャッシュ行は TTL 間隔で再取得する**自己修復**を追加(障害期間の行が永久に「不明」のまま残らない)。
+phpunit 205件緑。ユーザーの WorldTides キーは取得済み(.env の `WORLDTIDES_API_KEY` に設定する。コードには含めていない)。
+
 ## 次の一手(順番)
 1. **WorldTides の契約確認(ユーザー)**: 「Each API request = single user」条項がキャッシュ&全ユーザー配信と矛盾しないか確認 → OK ならキー取得し本番 .env に `WORLDTIDES_API_KEY` を設定。
 2. push(ユーザー)→ PR(緊急なので main 直 PR か develop 経由かはユーザー判断)→ デプロイ。デプロイ前に本番 .env へキー設定必須(未設定だと潮だけ null で動く=500にはならない)。
