@@ -96,7 +96,7 @@ with open(routes_file, encoding='utf-8') as f:
 
 # 2) native client calls
 native = set()  # (VERB, normpath)
-call_re = re.compile(r"apiClient\.(get|post|put|patch|delete)\(\s*[`'\"]([^`'\"]+)")
+call_re = re.compile(r"apiClient\.(get|post|put|patch|delete)(?:<[^>]*>)?\(\s*[`'\"]([^`'\"]+)")
 if os.path.isdir(native_api_dir):
     for root, _, files in os.walk(native_api_dir):
         for fn in files:
