@@ -32,9 +32,18 @@ Sandbox で スタンダード→ライト の**ダウングレード**をする
 staff除外)。planKey() 経由なので利用制限(AiUsageService)と表示(UserFormatterService)の
 両方に一貫適用。DB downgrade は通知ハンドラのまま(非破壊の防御層)。テスト追加・276件緑。
 
-## 関連(別途の残課題)
-- backend `AppStoreService` は sandbox/production の**自動フォールバックが無い**(審査=sandbox購入で
-  検証失敗のリスク)。`config('iap.environment')` 単一。→ production優先→失敗時sandbox再試行を推奨。
-  **フォールバックを入れても本番でのSandbox試験は壊れない**(本番購入は1回目成功で発動せず、
-  sandbox購入のみ再試行で通る)。本番常時ONは sandbox購入を本番が受理する=Apple推奨だが、
-  ハードニングしたい場合はフラグで制御可。未実装(ユーザー判断待ち)。
+## 環境フォールバック(2026-06-14 対応済み `8ba78a3`)
+`AppStoreService::verifyTransaction` を「本番→失敗時sandbox再試行」にした(Apple推奨)。
+本番設定のまま Sandbox/TestFlight/審査の購入も検証でき、審査リジェクトを防ぐ。
+- `environments()`: production設定=[production, sandbox] / sandbox設定(開発)=[sandbox]のみ。
+- Apple呼び出し+正規化を protected `fetchTransaction(env, txId)` に分離(`AppStoreServerAPI` は
+  **final でモック不可**のため、ここを partial mock して単体テスト)。
+- 落とし穴: **`Environment::PRODUCTION/SANDBOX` は型ではなく文字列定数**("Production"/"Sandbox")。
+  コンストラクタ引数も string。型ヒントに `Environment` を使うと TypeError(try/catchに飲まれ全環境失敗)。
+- 本番購入は1回目成功で再試行せず=**本番でのSandbox試験フロー(本番APIに向けて検証)を壊さない**。
+- 注意: 本番が sandbox 取引も受理する(Apple推奨だが理論上の無課金プレミアム余地)。スケール上許容。
+  ハードニングするなら environment フィールドでフラグ制御可能(未実装)。
+
+## ローカル環境メモ
+- `readdle/app-store-server-api` は composer.lock にあるがコンテナ vendor に未インストールだった
+  (テストが AppStoreService をモックするので顕在化せず)。`docker exec ... composer install` で同期。
