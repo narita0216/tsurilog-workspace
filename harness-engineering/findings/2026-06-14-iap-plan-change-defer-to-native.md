@@ -44,6 +44,13 @@ staff除外)。planKey() 経由なので利用制限(AiUsageService)と表示(Us
 - 注意: 本番が sandbox 取引も受理する(Apple推奨だが理論上の無課金プレミアム余地)。スケール上許容。
   ハードニングするなら environment フィールドでフラグ制御可能(未実装)。
 
+## 失効の二層化(2026-06-14 `621bf12`)— 通知 + 再問い合わせ
+失効ガード(`planKey` のローカル日付比較)単独だと、**通知V2の取りこぼしで「課金継続中なのにロックアウト」**する穴があった(自動更新で `plan_expires_at` を延ばすのは DID_RENEW 通知頼みのため)。対策として2層化:
+1. **App Store Server Notifications V2(主・リアルタイム)**: 受け口 `/api/iap/app-store/notifications` は実装済み。ただし **ASC で通知URL(Production/Sandbox)の登録が必須**(=運用作業。未登録だと1通も来ない)。
+2. **期限切れ時の Apple 再問い合わせ(保険)**: `AppStoreService::fetchSubscriptionStatus`(getAllSubscriptionStatuses + env フォールバック)→ `SubscriptionService::refreshIfExpired`。有効=期限延長 / 失効=free / 問い合わせ不能=猶予(`IAP_EXPIRY_RECHECK_GRACE_DAYS` 既定2日)で締め出さず再チェック。usage/現地/事前/追加質問の各コントローラ入口で実行。
+- 設計原則: **不確実なときは課金中ユーザーを締め出さない方向に倒す**(Apple が「失効」と明言した時だけ free)。
+- Sandbox の `plan_expires_at` が購入の数時間後など短い/不自然なのは Apple Sandbox(テスター更新レート設定)依存で、コードは Apple の値を保存しているだけ=バグではない。本番は実期間。
+
 ## ローカル環境メモ
 - `readdle/app-store-server-api` は composer.lock にあるがコンテナ vendor に未インストールだった
   (テストが AppStoreService をモックするので顕在化せず)。`docker exec ... composer install` で同期。
