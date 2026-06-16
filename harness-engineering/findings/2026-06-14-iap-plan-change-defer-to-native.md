@@ -26,8 +26,15 @@ Sandbox で スタンダード→ライト の**ダウングレード**をする
 - `showManageSubscriptionsIOS` は expo-iap の単体 export に無い。**`deepLinkToSubscriptions` を使う**。
 - 前提: ライト/スタンダードは**同一サブスクグループ**(別グループだと二重課金事故)。確認済み。
 
-## 関連(別途の残課題・要対応)
+## 失効ガード(2026-06-14 対応済み `d21c2ef`)
+`plan_expires_at` を利用時にチェックしておらず、失効通知(EXPIRED/REVOKE)の取りこぼしで
+解約・期限切れ後も有料が使えていた。→ **`User::planKey()` に失効ガード**を追加(過去なら free、
+staff除外)。planKey() 経由なので利用制限(AiUsageService)と表示(UserFormatterService)の
+両方に一貫適用。DB downgrade は通知ハンドラのまま(非破壊の防御層)。テスト追加・276件緑。
+
+## 関連(別途の残課題)
 - backend `AppStoreService` は sandbox/production の**自動フォールバックが無い**(審査=sandbox購入で
   検証失敗のリスク)。`config('iap.environment')` 単一。→ production優先→失敗時sandbox再試行を推奨。
-- `plan_expires_at` を**利用時にチェックしていない**(失効は通知V2頼み・定期ジョブ無し)。
-  通知欠落時に有料が残る穴。読み取り時の失効ガードを推奨。
+  **フォールバックを入れても本番でのSandbox試験は壊れない**(本番購入は1回目成功で発動せず、
+  sandbox購入のみ再試行で通る)。本番常時ONは sandbox購入を本番が受理する=Apple推奨だが、
+  ハードニングしたい場合はフラグで制御可。未実装(ユーザー判断待ち)。
