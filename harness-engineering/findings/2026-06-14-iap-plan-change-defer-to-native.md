@@ -51,6 +51,18 @@ staff除外)。planKey() 経由なので利用制限(AiUsageService)と表示(Us
 - 設計原則: **不確実なときは課金中ユーザーを締め出さない方向に倒す**(Apple が「失効」と明言した時だけ free)。
 - Sandbox の `plan_expires_at` が購入の数時間後など短い/不自然なのは Apple Sandbox(テスター更新レート設定)依存で、コードは Apple の値を保存しているだけ=バグではない。本番は実期間。
 
+## 通知デコードのバグ(2026-06-17 `9a38a23`)— 最重要
+本番ログで **全通知が `Notification is not a valid JSON array` で失敗**していた=**通知が一度も処理できていなかった**(失効/更新が DB に反映されない根本原因。「DB が実態とズレる」混乱の主犯)。
+- 原因: readdle `ResponseBodyV2::createFromRawNotification($raw)` は **Apple が送る生の通知 JSON 全体**(`{"signedPayload":"<JWS>"}`)を期待し、内部で `json_decode` → `signedPayload` を取り出す。なのに我々は `$request->input('signedPayload')` で**取り出し済みの JWS 単体**を渡していた → JWS は JSON ではないので必ず失敗。
+- 修正: `decodeNotification` で JWS を `json_encode(['signedPayload' => $jws])` に包んで渡す。
+- 教訓: 通知が「来ない」ように見えても、まず**到達ログ**を見る(今回ログ追加で発覚)。署名付き JWS が要るためデコード成功の単体テストは作れず、本番ログ(エラー消失)で確認する。
+- 併せて `fetchStatus`(getAllSubscriptionStatuses 解析)を「先頭取引」→「**アクティブ かつ 失効日時が最新**」採用に修正(汚れたアカウントで複数取引が並んでも tier 取り違えない)。
+
+## Sandbox 試験の沼(まとめ)
+- ASC の Sandbox テスター「前回の購入」欄は**当てにならない**(空でも Sandbox 不通の証拠にならない)。環境の最終判定は **verify ログの `environment`**(Apple が返す値)。
+- 実機 + Settings→デベロッパ→Sandbox Account でも、**端末の StoreKit トランザクションキューに古い取引が残る**と起動時に再配信され DB を上書きする。クリーン化は**アプリ削除→再インストール**、それでもダメなら新テスター。
+- 「ライト買って standard」は ASC 設定(group/level は正しい: Level1=Standard 最上位/Level2=Light)ではなく、**古い active standard 取引の再配信 or 通知デコード不能で失効が反映されない**ことが原因だった。
+
 ## ローカル環境メモ
 - `readdle/app-store-server-api` は composer.lock にあるがコンテナ vendor に未インストールだった
   (テストが AppStoreService をモックするので顕在化せず)。`docker exec ... composer install` で同期。
