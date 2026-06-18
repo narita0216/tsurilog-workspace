@@ -63,6 +63,20 @@ staff除外)。planKey() 経由なので利用制限(AiUsageService)と表示(Us
 - 実機 + Settings→デベロッパ→Sandbox Account でも、**端末の StoreKit トランザクションキューに古い取引が残る**と起動時に再配信され DB を上書きする。クリーン化は**アプリ削除→再インストール**、それでもダメなら新テスター。
 - 「ライト買って standard」は ASC 設定(group/level は正しい: Level1=Standard 最上位/Level2=Light)ではなく、**古い active standard 取引の再配信 or 通知デコード不能で失効が反映されない**ことが原因だった。
 
+## plan_expires_at が過去のまま残る問題(2026-06-18 `2e3cadc`)
+症状: DB の `plan_expires_at` が過去日のまま固定に見える。原因は**コードが過去値を書くのではなく**、
+失効処理が**遅延型(AIエンドポイント叩いた時だけ refreshIfExpired)**で、DBを直接見る/AIを使わない
+ケースでは誰も再評価せず、未来として書かれた値が時間経過で過去になっても放置されるため。
+(applyVerifiedPurchase は過去 expires を free に落とすので、過去値が書かれること自体は無い)
+対応:
+- **`app:reconcile-subscriptions`(毎時30分)** を追加。期限切れの有料ユーザーを Apple へ再問い合わせ
+  して plan を最新化(失効→free / 継続→延長 / 不能→猶予)。誰もアクセスしなくても DB が実態に追従。
+- **grace バグ修正**: refreshIfExpired の active パスが applyVerifiedPurchase を呼んでいたため、
+  Apple が active(課金リトライ/猶予)でも expires が過去だと誤って free に落ちていた。
+  active なら維持し、read-time ガードで free 扱いされないよう未来側(猶予日数)へ寄せる。
+- 注意: `original_transaction_id` を手で null にすると照合キーが無く reconcile も skip(据え置き)。
+  実ユーザーは購入時にセットされるので問題ないが、手動テストで null にしないこと。
+
 ## ローカル環境メモ
 - `readdle/app-store-server-api` は composer.lock にあるがコンテナ vendor に未インストールだった
   (テストが AppStoreService をモックするので顕在化せず)。`docker exec ... composer install` で同期。
