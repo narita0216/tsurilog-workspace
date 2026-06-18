@@ -244,8 +244,10 @@ README の設計思想を厳守する:
 4. **Service は複数コントローラで共有する処理だけ**。1 箇所でしか使わない処理は Controller の private メソッド。
 5. **不要な Service を作らない**(Controller を薄くするためだけの Service は禁止)。
 6. レスポンスは既存の `is_success` / `error_message` 慣習・`*ResponseService` に合わせる。
+7. **タイムゾーン**: app.timezone は `Asia/Tokyo`。**外部の epoch/unix時刻/ミリ秒を `Carbon` 化して保存する時は必ず `->setTimezone(config('app.timezone'))` で JST に寄せる**。`Carbon::createFromTimestamp*()` は TZ 未指定だと **UTC** になり、他カラム(created_at 等=JST)と混在して誤調査の元になる(IAP の `plan_expires_at` で実際に踏んだ。`AppStoreService::msToLocal()` 参照)。
 - 大きめの新規 PHP を書くときは `laravel-api-reviewer` サブエージェントにレビューを投げる。
 - PHP 編集後は `php-lint.sh`(PostToolUse hook)で PHP 8.4 構文が自動チェックされる。PR 前に `/backend-check`(Pint `--test` + PHPUnit)を流す。
+- **外部課金(IAP/サブスク)を調べる時の鉄則**: ①バグ断定の前に「実コード読む/一次情報で外部仕様確認/ログで実値確認」の3点を踏む(憶測で外部要因に帰着させない)②**まずテスト環境を確定**(TestFlight=本番Apple ID・日次更新×6/週 / dev ビルド Sandbox=デベロッパ設定のSandboxアカウント・5分更新。ASCの購入履歴欄は不当て)。詳細と反省 → `harness-engineering/findings/2026-06-18-iap-debugging-retrospective.md`。
 
 ### 8.3 native(Expo / RN)コード規約
 - 既存パターンに従う: `api/<domain>/<action>.ts` に 1 リクエスト 1 ファイル + `*ApiRequestParamsType` / `*ApiResponseType` の型定義。サーバ状態は **TanStack Query**(`hooks/use-*.ts`)、フォームは react-hook-form + zod(`validation/`)。
