@@ -228,6 +228,15 @@ git checkout -b feature/<topic>
 
 ## 8. AI エージェントへの指示
 
+### 8.0.0 外部サービスのUI・手順を記憶で断定しない（最重要・厳守）
+App Store Connect / Google Play Console / Stripe 等の第三者SaaS は **UI が頻繁に変わり、学習データは古い**。
+**現在のメニュー名・セクションの場所・操作手順を記憶から断定して案内するのは禁止。** 手順を出す前に必ず:
+- (a) ベンダー公式の**最新ドキュメントを WebFetch で確認**、または (b) ユーザーに**先に実画面のスクショを依頼**して見えているものに基づく。
+- 確証が無いなら断定せず「現行UIは変わっている可能性があるので確認させて/画面を見せて」と**不確実性を明示**。
+- 回答では「**検証済みの事実**」と「**未確認の推測**」を分けて書く。API仕様もUI手順も同じ規律。
+- 経緯と教訓 → `findings/2026-06-20-external-ui-asserted-from-memory.md`（ASCのIAP紐付けUIを記憶で誤案内した事故）。
+  関連: `findings/2026-06-18-iap-debugging-retrospective.md`（憶測で外部要因に帰着しない）。
+
 ### 8.0 動作検証はローカルで
 - backend の動作確認は **Docker Compose**(`api`/`queue`/`scheduler`/`db`)で行う。本番 / 共有環境への直接接続で確認しない。
 - native は **dev client + `npx expo start --dev-client`**(実機/シミュレータ)。UI を変えたら **`/native-qa`**(シミュレータで動線を通しスクショ撮影 → PR 添付。ADR-0008)で確認する。できない場合はその旨を明示する。
