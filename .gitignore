@@ -23,6 +23,8 @@ gstack/
 .gstack/
 *.local.md
 *.scratch.md
+# AI メモリは local-only(git に含めない・CLAUDE.md §8.5)。共有すべき学びは findings/CLAUDE.md へ
+memory/
 
 # .claude/ — チーム共有部分(settings.json, commands/, agents/)はコミットする。
 # 個人設定・シークレットを含むファイルのみ除外する。
