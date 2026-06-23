@@ -8,6 +8,7 @@
 | [workflow.md](workflow.md) | 開発フロー(ブランチ・PR・CI・リリース) |
 | [tooling.md](tooling.md) | Claude Code / MCP / ハーネスツールの状況 |
 | [external-apis-ai-strategy.md](external-apis-ai-strategy.md) | AI戦略機能の外部API選定(海しる/NOAA/WWO/Gemini/Claude)2026-05-29 |
+| [condition-score-current-spec.md](condition-score-current-spec.md) | 釣れる度の現行仕様(偏差スコア算法・9条件・ConditionScoreService・表示)。ピボット再設計の土台 |
 | `effectiveness/` | ハーネスツールの実行ログ(`events-<host>.jsonl`、自動蓄積) |
 
 > これらは 2026-05-28 時点のスナップショット。状況が変わったら更新するか、新しい日付で追記する。最新の事実はコードと git を見るのが優先。
