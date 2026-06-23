@@ -15,4 +15,5 @@ $EDITOR <slug>.md
 |---|---|---|
 | [api-contract-catalog](api-contract-catalog.md) | エンドポイント別の routes/native/openapi 3 点対応表を作る | 🟡 進行中 |
 | [local-dev-environment](local-dev-environment.md) | backend Docker / native dev client のローカル環境を確実に立ち上げ、手順を整備 | 🟡 進行中 |
-| [ai-strategy-feature](ai-strategy-feature.md) | 事前戦略 / 現地戦略の AI 機能(Claude+Gemini×釣りログDB×環境データ) | 🟡 進行中 |
+| [ai-strategy-feature](ai-strategy-feature.md) | 事前戦略 / 現地戦略の AI 機能(Claude+Gemini×釣りログDB×環境データ) | ⏸ 休止(ADR-0011でピボット) |
+| [2026-06-pivot-condition-score-monetization](2026-06-pivot-condition-score-monetization.md) | 釣れる度(一般＋種別課金¥150)ピボット。記録/AI依存をやめ磁石+深さ課金へ(ADR-0011) | 🟡 進行中 |

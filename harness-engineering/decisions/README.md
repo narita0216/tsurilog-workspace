@@ -24,3 +24,7 @@ $EDITOR 000N-<short-slug>.md
 | [0005](0005-workspace-autosave.md) | workspace メタリポを Stop フックで自動 commit & push | Accepted |
 | [0006](0006-ai-strategy-execution-architecture.md) | AI戦略機能の生成AI呼び出しは既存 Laravel backend 内で実行 | Accepted |
 | [0007](0007-env-data-replace-wwo.md) | 環境データ: 天気/海象=Open-Meteo・潮=WWO据え置き・水深=OpenTopoData/GMRT | Accepted |
+| [0008](0008-native-ui-qa-devclient.md) | native UI の QA は dev client + Maestro でスクショ(実質E2E) | Accepted |
+| [0009](0009-fishing-knowledge-harness.md) | 釣り知識ハーネス(地点md・魚種知識) | Accepted |
+| [0010](0010-ai-advisor-onsite-concierge.md) | AIアドバイザー「現地」コンシェルジュ化 | Accepted（ADR-0011で休止） |
+| [0011](0011-pivot-to-condition-score-monetization.md) | 記録/AI依存から「釣れる度(一般＋種別課金)」中心へピボット | Accepted |
