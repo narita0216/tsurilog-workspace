@@ -4,6 +4,16 @@
 > **前提**: 現行仕様 `assessment/condition-score-current-spec.md`。親 initiative `2026-06-pivot-condition-score-monetization.md`。
 > **方針**: 魚種非依存・一般知識ベース・**絶対値スコア(0〜100)**・時刻ごと(時間軸グラフ)。**今は釣行データを最小影響にし、データが増えるほど自動で影響を上げる**。
 
+> ## ✅ 実装状況（2026-06-25・手順1〜4 実装済み）
+> - **backend**: `reomin/tsurilog-backend` ブランチ `feature/condition-score-general-skeleton`（PR を develop へ要作成）。
+>   - `config/condition_score.php`（重み/floor/アンカー/アフィン/データ較正層を一元管理）
+>   - `app/Services/ConditionScoreCalculator.php`（連続関数→重み付き和→アフィン、データ層 blend）
+>   - `app/Services/ConditionDataLayerService.php`（shrinkage・goodness・メモ化）
+>   - `app/Services/SunTimeService.php`（日出日入）/ `OpenMeteoClient`(pressure_msl) / `GetEnvData`(気圧・潮振幅 raw_tide_swing_cm 保存) / migration 2026_06_25_000001
+>   - テスト: ConditionScoreCalculatorTest 5 + ConditionDataLayerServiceTest 3 + 既存 Feature 2 = pass（既存3失敗=GetEnvDataService 天気変換は無関係）。
+> - **native**: `narita0216/tsurilog-native` ブランチ `feature/condition-score-display-rescale`（PR を develop へ要作成）。`rateVerdict` 閾値(≥80/64/46/30)＋`condition_rates` キー更新。
+> - **残**: ①両 PR を develop へ作成・レビュー ②手順4 の経験的較正（本番スコア分布を見て config 調整）③native-qa（backend が dev に出てから）④日跨ぎΔp（h<3 は当日内のみ）。
+
 ---
 
 ## 0. 確定した設計判断（レビュー反映）
