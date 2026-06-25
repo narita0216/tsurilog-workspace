@@ -221,10 +221,17 @@ do_run() {
     #   .env に無いローカルビルドでも QA で確実に認証注入できるようにする。2026-06-02 検証。
     note "Metro を起動します(expo start --dev-client, port=$METRO_PORT, variant=development)"
     local metro_pid=""
+    # ★ EXPO_PUBLIC_DEV_AUTH_TOKEN に dev トークンを渡し、deep-link/ダイアログに頼らず
+    #   起動時に自動ログインさせる(use-dev-auth のフォールバック)。headless で確実。
+    # ★ --clear で Metro の transform キャッシュを破棄。EXPO_PUBLIC_* はバンドル時に inline
+    #   されるため、API 向き先(ローカル)やトークンを変えたのにキャッシュで反映されず
+    #   ログイン画面のまま、という事故を防ぐ(2026-06-25 ローカル QA で踏んだ)。
+    # ★ EXPO_PUBLIC_API_DOMAIN / EXPO_PUBLIC_DEV_AUTH_REDIRECT は呼び出し元の環境から継承
+    #   (ローカル backend を指す: EXPO_PUBLIC_API_DOMAIN=http://localhost:8080 等)。
     if [[ "$DRY_RUN" == "1" ]]; then
-        printf '\033[90m  $ (cd %s && EXPO_PUBLIC_APP_VARIANT=development npx expo start --dev-client --port %s) &\033[0m\n' "$NATIVE" "$METRO_PORT" >&2
+        printf '\033[90m  $ (cd %s && EXPO_PUBLIC_APP_VARIANT=development EXPO_PUBLIC_DEV_AUTH_TOKEN=*** npx expo start --dev-client --clear --port %s) &\033[0m\n' "$NATIVE" "$METRO_PORT" >&2
     else
-        ( cd "$NATIVE" && EXPO_PUBLIC_APP_VARIANT=development npx expo start --dev-client --port "$METRO_PORT" >/tmp/tsurilog-metro.log 2>&1 ) &
+        ( cd "$NATIVE" && EXPO_PUBLIC_APP_VARIANT=development EXPO_PUBLIC_DEV_AUTH_TOKEN="${TSURILOG_DEV_API_TOKEN:-}" npx expo start --dev-client --clear --port "$METRO_PORT" >/tmp/tsurilog-metro.log 2>&1 ) &
         metro_pid=$!
         # Metro が立ち上がるのを待つ
         local i
