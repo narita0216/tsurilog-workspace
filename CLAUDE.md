@@ -30,9 +30,16 @@ tsurilog-workspace/
 ├── .mcp.json                 ← GitHub MCP 設定
 ├── .claude/                  ← チーム共有ハーネス設定(commands / agents / settings)
 ├── harness-engineering/      ← ハーネス分析・ADR・ツール・findings
-├── tsurilog-native/          ← アプリ(別リポジトリ / gitignore 対象)
-└── tsurilog-backend/         ← API(別リポジトリ / gitignore 対象)
+├── tsurilog-native/          ← アプリ(別リポジトリ / gitignore 対象)★AIの作業はここ
+└── tsurilog-backend/         ← API(別リポジトリ / gitignore 対象)★AIの作業はここ
 ```
+
+> ## 🚫 作業ディレクトリの鉄則（最重要・厳守）
+> **AI の作業は必ず `tsurilog-workspace/` 配下のサブリポ（`tsurilog-workspace/tsurilog-native` と `tsurilog-workspace/tsurilog-backend`）で行う。**
+> - **ワークスペース外の似たチェックアウトは人間（オーナー）専用の領域。読み書き・ブランチ操作・コミット・QA すべて禁止。** 例: `/Users/keitanarita/projects/turilog/native/*`、`/Users/keitanarita/projects/turilog/api/*`（オーナーが自分で動作確認する場所）。
+> - native の作業・`/native-qa` は **`tsurilog-workspace/tsurilog-native` 固定**。`TSURILOG_NATIVE_DIR` を外部パスに上書きしない（native-qa.sh の既定が正しい dir を指す）。
+> - grep のヒット位置で作業場所を決めない。**着手前に「今のパスがワークスペース配下か」を必ず確認**し、本配置図に従って確定する。
+> - 経緯と教訓 → `findings/2026-06-25-wrong-native-working-dir.md`（人間専用 dir で勝手に作業した事故）。
 
 > **重要:** ワークスペース親ディレクトリ自体が git リポジトリ(**メタリポジトリ**)で、ハーネス資産(本ファイル群)を版管理する。
 > - remote: `git@github-narita0216:narita0216/tsurilog-workspace.git`(owner: narita0216)
