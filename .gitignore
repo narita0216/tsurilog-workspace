@@ -1,6 +1,7 @@
 # Subrepositories — managed independently (それぞれ独立した git リポジトリ)
 /tsurilog-native/
 /tsurilog-backend/
+/tsurilog-hp/
 
 # macOS
 .DS_Store
