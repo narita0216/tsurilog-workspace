@@ -286,6 +286,13 @@ README の設計思想を厳守する:
   - **build 要否はネイティブ指紋(`@expo/fingerprint`)で自動判定**。JS/TS だけの変更は build せず Metro 配信で確認。ネイティブ変更/初回は **ローカルビルド `native-qa.sh build`(= `npx expo run:ios`、EAS 無料枠を消費しない)**。`eas build`(枠消費)は実機配布のときだけ人間が明示実行(deny 済み)。
   - 認証は dev-client 限定の deep-link 注入(`turilog://dev-auth?token=`)で回避。`TSURILOG_DEV_API_TOKEN`(dev API のテスト用トークン)を環境変数で渡す。
 - 大きめの新規 TS/UI は `expo-rn-reviewer` サブエージェントにレビューを投げる。
+- **【義務】UI変更チェックリスト**(完了report/PR の前に必ず実施。経緯 → `findings/2026-06-28-ui-check-neglect-and-mandate.md`):
+  1. **影響画面を列挙**してから着手(共有コンポーネントは grep で全呼び出し箇所を洗う)。
+  2. **各影響画面を目視**(スクショ)。1画面の確認を他画面へ一般化しない。
+  3. **状態を網羅**: 無課金/有料・空/データあり・ローディング/エラー・最小〜大きめ幅。広告に関わる変更は**無課金=広告あり/有料=広告なしの両方**を撮る。
+  4. **要素を消す/隠す時は占有領域(余白・オフセット・reserve)も必ず詰める**(phantom padding を残さない)。余白ゲートは画面ごとのマジックナンバーでなく単一判定(`useIsPaid()` 等)で。
+  5. **共有コンポーネントは呼び出し箇所ごとの実寸**で確認(釣果カード=図鑑/詳細/done/共有モーダル)。文字の見切れ・折返し・潰れ、横スクロール/リストの flex 潰れも確認。
+  6. **tsc/eslint が通っただけで「UI OK」としない**(型・整形が通る ≠ 画面が正しい)。
 
 ### 8.4 危険操作
 - `git push --force` / `git reset --hard` / 履歴書き換えは行わない(`.claude/settings.json` deny)。
