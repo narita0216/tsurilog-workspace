@@ -186,26 +186,33 @@ AI で両リポを横断的に扱うとき、価値が出る分析角度:
 | ブランチ | 役割 |
 |---|---|
 | `main` | **本番ブランチ。保護対象。** 直接 push 禁止。PR 経由のみ。backend は PR to main で CI(テスト)必須 |
-| `develop` | **開発統合ブランチ。** 作業ブランチの起点・統合先 |
-| `feature/*` | `develop` を起点に切り、PR で `develop` へ |
+| `develop` | **開発統合ブランチ。** リリースブランチの起点 |
+| `release/{version}` | **リリース対応ブランチ。最新 `develop` から作成し、ここで対応する**(例: `release/1.1.4`) |
+| `feature/*` | (任意)細かい作業を分ける場合のみ。`develop` を起点に切る |
 
-- **新規ブランチは必ず `develop` を起点**に切る。`main` を起点にしない。
+> ## ⚠️ 絶対ルール(2026-06 確定・厳守)
+> 1. **リリース対応は「最新の `develop` から `release/{version}` を作成」して行う。** `main` や古い `develop`、別の release ブランチを起点にしない。着手前に必ず `git checkout develop && git pull origin develop` してから `git checkout -b release/{version}`。
+> 2. **`app.json` の `version` は、そのブランチの `{version}` に必ず更新する。** 例: `release/1.1.4` なら `app.json` の `version` を `"1.1.4"` にする。**バージョン据え置きのまま提出すると App Store Connect が弾く**(submit が "Something went wrong" で失敗。経緯 → `findings/2026-06-30-appstore-submit-version-not-bumped.md`)。`appVersionSource: remote` でもマーケティングバージョンは app.json 由来なので必須。
+> - 緊急の本番hotfixを `main` 起点で切る場合も、上記2(version)を満たし、main へPR後 `develop` へバックマージする。
+
 - **`main` への直接 push / merge は行わない。**
 - PR は人間レビューを受ける。AI が単独 merge しない。
 
-**実装着手の手順(両コードリポ共通・必須):** コードリポ(native / backend)で機能実装を始めるときは、毎回この手順を踏む。
+**実装着手の手順(両コードリポ共通・必須):** コードリポ(native / backend)で対応を始めるときは、毎回この手順を踏む。
 
 ```bash
 # 1. develop へ切替し、リモート最新を取り込む(必ず最新の develop 起点)
 git checkout develop && git pull origin develop
-# 2. develop を起点に作業ブランチを新規作成
-git checkout -b feature/<topic>
-# 3. 実装・コミット
-# 4. push して develop への PR を作成(MCP 優先・§8.6)。base は必ず develop
+# 2. 最新 develop を起点に release/{version} を作成
+git checkout -b release/<version>          # 例: release/1.1.4
+# 3. native は app.json の "version" を <version> に更新(絶対ルール2)
+# 4. 実装・コミット
+# 5. push して PR を作成(MCP 優先・§8.6)
 ```
 
-- **両リポにまたがる機能は、native / backend それぞれで上記を行い、それぞれ `develop` への PR を立てる。** 対になる PR は本文で相互リンクする。
-- 着手時に `main` に居たら(SessionStart の workspace-sync が警告する)、まず上記手順で `develop` 起点の作業ブランチへ移る。`main` 上で直接実装しない。
+- **両リポにまたがる対応は、native / backend それぞれで同じ `release/{version}` 名で行い**、対になる PR は本文で相互リンクする。
+- 着手時に `main` や別ブランチに居たら(SessionStart の workspace-sync が警告する)、まず上記手順で**最新 develop 起点の `release/{version}`** へ移る。`main` 上で直接実装しない。
+- 細かい作業を分けたい場合のみ `feature/*` を `develop`(または対象 release)起点で切ってよいが、リリースは最終的に `release/{version}` に集約する。
 
 #### workspace メタリポ(`tsurilog-workspace` = 本ディレクトリ)
 
