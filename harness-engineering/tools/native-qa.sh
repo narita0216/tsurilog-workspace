@@ -210,7 +210,18 @@ do_run() {
     have maestro && { ensure_java || precond "maestro 実行に JDK が必要です(brew install openjdk)"; }
     have xcrun   || precond "xcrun(Xcode CLT)が必要です"
     [[ -f "$FLOW" ]] || precond "Maestro フローがありません: $FLOW(flow-template.yaml を .maestro/ に置く)"
-    [[ -n "${TSURILOG_DEV_API_TOKEN:-}" ]] || precond "TSURILOG_DEV_API_TOKEN 未設定(dev API 発行のテスト用 api_token を渡す)"
+    [[ -n "${TSURILOG_DEV_API_TOKEN:-}" ]] || precond "TSURILOG_DEV_API_TOKEN 未設定(検証先 backend で有効な api_token。既定=ローカル Docker で発行したトークン)"
+
+    # ★ 検証先 API は既定でローカル Docker(§8.0: AI はローカルで検証)。未指定なら localhost:8080。
+    #   dev/staging を検証したい時だけ呼び出し元で EXPO_PUBLIC_API_DOMAIN を明示上書きする。
+    export EXPO_PUBLIC_API_DOMAIN="${EXPO_PUBLIC_API_DOMAIN:-http://localhost:8080}"
+    note "検証先 API: $EXPO_PUBLIC_API_DOMAIN"
+
+    # ★ dev-auth はトークンを注入しても REDIRECT が無いと画面遷移せずログイン画面に留まる。
+    #   既定でホーム(/(tabs))へ着地させる。別画面を撮りたいフローは呼び出し元で上書きする
+    #   (例: EXPO_PUBLIC_DEV_AUTH_REDIRECT=/analysis)。
+    export EXPO_PUBLIC_DEV_AUTH_REDIRECT="${EXPO_PUBLIC_DEV_AUTH_REDIRECT:-/(tabs)}"
+    note "dev-auth 着地: $EXPO_PUBLIC_DEV_AUTH_REDIRECT"
 
     note "スクショ出力先: $SHOTS_DIR"
     run mkdir -p "$SHOTS_DIR"
